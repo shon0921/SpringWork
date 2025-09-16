@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>회원 배송조회</title>
+
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        .custom-card {
+            width: 100%;
+            max-width: 500px;
+            margin: auto;
+            padding-top: 20px;
+        }
+        .form-control,
+        .form-control-user,
+        #carrierId {
+            height: 45px;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            padding-left: 0.75rem;
+        }
+        #addr1 {
+            height: 45px;
+        }
+        #addrSearchBtn {
+            height: 40px;
+            font-size: 0.85rem;
+            padding: 0 18px;
+            border-radius: 0.35rem;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .user button {
+            margin-top: 30px;
+            height: 60px;
+            font-size: 1.2rem;
+        }
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #858796;
+        }
+        #backButton:hover {
+            color: #5a5c69;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-primary">
+
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <button type="button" id="backButton">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <div class="p-4">
+            <div class="text-center">
+                <h1 class="h4 text-gray-900 mb-4">회원 배송조회</h1>
+            </div>
+
+            <form class="user" id="f" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="carrierId">택배사</label>
+                    <select class="form-control" id="carrierId">
+                        <option value="">-- 택배사를 선택하세요 --</option>
+                        <option value="kr.epost">우체국택배</option>
+                        <option value="kr.cjlogistics">CJ대한통운</option>
+                        <option value="kr.lotte">롯데택배</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trackingnumber">배송번호 입력 ('-' 제외)</label>
+                    <input type="text" class="form-control form-control-user" name="trackingnumber" id="trackingnumber">
+                </div>
+                <div class="form-group">
+                    <label for="zipcode">우편번호</label>
+                    <input type="text" class="form-control form-control-user" name="zipcode" id="zipcode" readonly>
+                </div>
+                <div class="form-group mb-1">
+                    <label for="addr1">도착주소</label>
+                    <input type="text" class="form-control form-control-user" name="addr1" id="addr1" readonly style="height: 45px;">
+                </div>
+                <div class="text-right mb-3">
+                    <button type="button" class="btn btn-secondary" id="addrSearchBtn" onclick="kakaoPost(this.form)">주소 검색</button>
+                </div>
+                <button id="Guestdeliverytracking" class="btn btn-primary btn-user btn-block" type="button">배송조회</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 모든 스크립트는 body 하단에 위치시킵니다. -->
+<script src="/js/jquery-3.6.0.min.js"></script>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // 뒤로가기 버튼 클릭 시 메인 화면으로 이동
+        $("#backButton").on("click", function () {
+            location.href = "/main/title";
+        });
+
+        // '배송조회' 버튼 클릭 이벤트
+        $("#Guestdeliverytracking").on("click", function () {
+            let trackingNumber = $("#trackingnumber").val().trim();
+            let carrierId = $("#carrierId").val();
+            let addr1 = $("#addr1").val().trim();
+
+            // 입력값 유효성 검증
+            if (carrierId === "") {
+                alert("택배사를 선택하세요.");
+                $("#carrierId").focus();
+                return;
+            }
+            if (trackingNumber === "") {
+                alert("배송번호를 입력하세요.");
+                $("#trackingnumber").focus();
+                return;
+            }
+            if (addr1 === "") {
+                alert("도착주소를 입력하세요.");
+                $("#addr1").focus();
+                return;
+            }
+
+            // 서버에 배송 조회를 요청합니다.
+            $.ajax({
+                url: "/tracking/search2",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    carrierId: carrierId,
+                    trackingNumber: trackingNumber,
+                    addr1: addr1
+                })
+            }).done(function (response) {
+                // 요청 성공 시 (HTTP 200 OK)
+                console.log("서버로부터 받은 응답:", response);
+
+                if (response.message === "SUCCESS" && response.data) {
+
+                    // [추가] 결과 페이지로 이동하기 전, 돌아올 현재 페이지의 주소를 저장합니다.
+                    // 이 페이지의 실제 URL 경로로 수정해야 할 수 있습니다.
+                    sessionStorage.setItem('returnUrl', '/main/post/deliverytracking');
+
+                    // 1. 결과 페이지에 전달할 새로운 객체를 만듭니다.
+                    const dataToStore = {
+                        trackingInfo: response.data, // 서버에서 받은 TrackingDTO를 'trackingInfo' 키에 저장
+                        toAddress: addr1,             // 조회 시 사용한 주소를 'toAddress' 키에 저장
+                        trackingNumber: trackingNumber
+                    };
+
+                    // 2. 새로 만든 객체를 JSON 문자열로 변환하여 sessionStorage에 저장합니다.
+                    sessionStorage.setItem('latestTrackingData', JSON.stringify(dataToStore));
+                    console.log("sessionStorage에 'TrackingDTO'와 'toAddress'를 함께 저장했습니다.");
+
+                    // 3. 사용자에게 성공을 알리고 결과 페이지로 이동합니다.
+                    alert("조회 성공! 결과 페이지로 이동합니다.");
+                    location.href = "/main/post/trackingResult2";
+
+                } else {
+                    // 서버가 200 OK를 보냈지만, message가 SUCCESS가 아닌 경우
+                    alert("조회에 실패했습니다: " + (response.message || "알 수 없는 오류"));
+                }
+            }).fail(function (xhr) {
+                // 요청 실패 시 (HTTP 4xx, 5xx 등)
+                console.error("서버 요청 실패:", xhr);
+
+                let errorMessage = "서버와 통신 중 오류가 발생했습니다.";
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    // CommonResponse로 감싸진 에러 메시지가 있는 경우
+                    errorMessage = xhr.responseJSON.message;
+                }
+                alert(errorMessage);
+            });
+        });
+    });
+
+    // 주소 검색 API 콜백 함수
+    function kakaoPost(f) {
+        new daum.Postcode({
+            oncomplete: function (data) {
+                f.zipcode.value = data.zonecode;
+                f.addr1.value = data.address;
+            }
+        }).open();
+    }
+</script>
+
+</body>
+</html>

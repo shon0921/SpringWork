@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>공지사항 수정하기</title>
+
+    <!-- 폰트 및 SB Admin 2 CSS -->
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #b2ebf2;
+        }
+
+        .custom-card {
+            max-width: 500px;
+            margin: auto;
+            background-color: white;
+            border-radius: 12px;
+            padding: 40px 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #000;
+        }
+
+        label {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        textarea {
+            resize: none;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+
+        .form-button {
+            width: 48%;
+            padding: 12px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            color: #fff;
+        }
+
+        #btnSend {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        #btnSend:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        #btnReset {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+        #btnReset:hover {
+            background-color: #5a6268;
+            border-color: #5a6268;
+        }
+    </style>
+
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const nSeq = urlParams.get('nSeq');
+
+        $(document).ready(function () {
+            if (!nSeq) {
+                alert("잘못된 접근입니다.");
+                return;
+            }
+
+            // 기존 데이터 불러오기
+            $.ajax({
+                url: "/notice/GetNoticeInfo",
+                type: "get",
+                dataType: "json",
+                data: { nSeq },
+                success: function (res) {
+                    const data = res.data;
+                    if (!data) {
+                        alert("글 정보를 불러오지 못했습니다.");
+                        return;
+                    }
+
+                    $("#nSeq").val(data.noticeSeq);
+                    $("#title").val(data.title);
+                    $("#contents").val(data.contents);
+                },
+                error: function () {
+                    alert("글 정보를 불러오지 못했습니다.");
+                }
+            });
+
+            $("#btnSend").on("click", function () {
+                const title = $("#title").val().trim();
+                const contents = $("#contents").val().trim();
+
+                if (!title) {
+                    alert("제목을 입력해주세요.");
+                    return;
+                }
+
+                if (!contents) {
+                    alert("내용을 입력해주세요.");
+                    return;
+                }
+
+                $.ajax({
+                    url: "/notice/noticeUpdate",
+                    type: "post",
+                    dataType: "json",
+                    data: {
+                        nSeq: $("#nSeq").val(),
+                        title,
+                        contents,
+                        noticeYn: "Y" // 항상 Y로 고정
+                    },
+                    success: function (res) {
+                        alert(res.data?.msg || "수정 성공");
+                        if (res.data?.msg.includes("수정")) {
+                            // [수정] 목록 페이지 대신, 현재 nSeq를 사용하여 상세 페이지로 이동
+                            location.href = "/main/notice/noticeDetail?nSeq=" + nSeq;
+                        }
+                    },
+                    error: function () {
+                        alert("수정 중 오류가 발생했습니다.");
+                    }
+                });
+            });
+
+            $("#btnReset").on("click", function () {
+                $("#editForm")[0].reset();
+            });
+        });
+    </script>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <h1>공지사항 수정하기</h1>
+        <form id="editForm">
+            <input type="hidden" id="nSeq" name="nSeq">
+
+            <label for="title">제목</label>
+            <input type="text" id="title" name="title" maxlength="100">
+
+            <label for="contents">내용</label>
+            <textarea id="contents" name="contents" rows="10"></textarea>
+
+            <div class="button-group">
+                <button type="button" id="btnSend" class="form-button">수정</button>
+                <button type="button" id="btnReset" class="form-button">다시쓰기</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bootstrap & FontAwesome -->
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/fontawesome-free/js/all.min.js"></script>
+
+</body>
+</html>

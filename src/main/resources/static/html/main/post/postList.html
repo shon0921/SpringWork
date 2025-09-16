@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>저장된 배송 목록</title>
+
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #b2ebf2;
+        }
+        .custom-card {
+            max-width: 600px;
+            margin: auto;
+            background-color: white;
+            border-radius: 12px;
+            padding: 40px 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .tracking-item {
+            position: relative; /* 삭제 버튼의 absolute 위치 기준점 */
+            width: 100%;
+            padding: 20px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .tracking-item:hover {
+            border-color: #4e73df;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .item-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            gap: 10px; /* 요소 간 최소 간격 */
+        }
+        .item-header-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1; /* 남는 공간을 모두 차지 */
+        }
+        .item-status {
+            font-size: 0.9rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            color: white;
+            background-color: #4e73df;
+            white-space: nowrap;
+        }
+        .item-details {
+            font-size: 0.9rem;
+            color: #555;
+            line-height: 1.6;
+        }
+        .item-details strong {
+            color: #000;
+            margin-right: 5px;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 50%;
+            color: #858796;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+        .delete-btn:hover {
+            background-color: #e74a3b;
+            color: white;
+            border-color: #d73a2b;
+        }
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #858796;
+        }
+        #backButton:hover {
+            color: #5a5c69;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <button type="button" id="backButton">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <h1>저장된 배송 목록</h1>
+        <div id="savedListContainer" style="width: 100%;">
+            <!-- 목록이 로드되면 이 곳에 채워집니다 -->
+            <p class="text-center text-muted mt-4">목록을 불러오는 중...</p>
+        </div>
+    </div>
+</div>
+
+<script src="/js/jquery-3.6.0.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    /**
+     * 날짜 문자열을 'YYYY-MM-DD HH:MM' 형식으로 변환하는 함수
+     */
+    function formatDateTime(dateString) {
+        if (!dateString) return '업데이트 정보 없음';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return '날짜 정보 없음';
+        }
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ` +
+            `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    /**
+     * 서버에서 저장된 배송 목록을 불러와 화면에 표시하는 함수
+     */
+    function loadSavedTrackingList() {
+        $.ajax({
+            url: '/post/getLogList',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                const container = $("#savedListContainer");
+                const savedList = response.data || [];
+                const message = response.message || "UNKNOWN_RESPONSE";
+
+                if (message === 'SUCCESS') {
+                    let html = '';
+                    if (savedList.length === 0) {
+                        html = '<p class="text-center text-muted mt-4">저장된 배송 정보가 없습니다.</p>';
+                    } else {
+                        container.data('tracking-list', savedList);
+
+                        savedList.forEach(function(dto, index) {
+                            html += `
+                            <div class="tracking-item" data-index="${index}">
+                                <button type="button" class="delete-btn" title="삭제">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <div class="item-header">
+                                    <div class="item-header-content">
+                                        <span>${dto.toName || '정보 없음'} 님</span>
+                                        <span class="item-status">${dto.stateText || '상태 확인'}</span>
+                                    </div>
+                                </div>
+                                <div class="item-details">
+                                    <p class="mb-1"><strong>운송장:</strong> ${dto.trackingNumber || '정보 없음'}</p>
+                                    <p class="mb-0"><strong>최종 업데이트:</strong> ${formatDateTime(dto.lastDeliveryTime)}</p>
+                                </div>
+                            </div>`;
+                        });
+                    }
+                    container.html(html);
+                } else {
+                    console.error("서버 응답 오류:", response);
+                    container.html('<p class="text-center text-danger mt-4">목록을 표시할 수 없습니다.</p>');
+                }
+            },
+            error: function(jqXHR) {
+                console.error("AJAX 요청 실패:", jqXHR);
+                const container = $("#savedListContainer");
+                if (jqXHR.status === 401) {
+                    container.html('<p class="text-center text-muted mt-4">로그인이 필요한 서비스입니다.</p>');
+                } else {
+                    // [수정] alert 대신 console에만 에러를 남겨 사용자 경험을 방해하지 않도록 함
+                    console.error("목록을 불러오는 중 에러가 발생했습니다.");
+                    container.html('<p class="text-center text-danger mt-4">데이터를 불러오지 못했습니다. 새로고침 해주세요.</p>');
+                }
+            }
+        });
+    }
+
+    $(document).ready(function() {
+
+        // 뒤로가기 버튼 클릭 이벤트
+        $("#backButton").on("click", function () {
+            location.href = "/main/title";
+        });
+
+        // 페이지 로드 시 저장된 목록을 불러옵니다.
+        loadSavedTrackingList();
+
+        // [핵심] 배송 항목 클릭 시 바로 최신 정보 조회 후 페이지 이동
+        $("#savedListContainer").on("click", ".tracking-item", function() {
+            const index = $(this).data("index");
+            const trackingList = $("#savedListContainer").data('tracking-list');
+            const clickedItemData = trackingList[index];
+
+            // 상세 조회를 위해 서버에 최신 배송 정보를 요청합니다.
+            $.ajax({
+                url: "/tracking/search2",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    carrierId: clickedItemData.carrierId,
+                    trackingNumber: clickedItemData.trackingNumber,
+                    addr1: clickedItemData.toAddress
+                })
+            }).done(function (response) {
+                // 성공 시
+                if (response.message === "SUCCESS" && response.data) {
+                    const dataToStore = {
+                        trackingInfo: response.data,
+                        toAddress: clickedItemData.toAddress,
+                        trackingNumber: clickedItemData.trackingNumber
+                    };
+
+                    // [추가] 결과 페이지로 이동하기 전, 현재 페이지 주소를 저장합니다.
+                    sessionStorage.setItem('returnUrl', '/main/post/postList');
+
+                    sessionStorage.setItem('latestTrackingData', JSON.stringify(dataToStore));
+                    // 결과 페이지로 즉시 이동합니다.
+                    location.href = "/main/post/trackingResult2";
+                } else {
+                    // 서버가 OK 응답을 줬지만, 내부적으로 실패한 경우
+                    alert("최신 정보를 조회하는 데 실패했습니다. 잠시 후 다시 시도해주세요.");
+                }
+            }).fail(function (xhr) {
+                // AJAX 요청 자체가 실패한 경우 (네트워크 오류, 서버 500 에러 등)
+                alert("최신 정보 조회 중 오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.");
+            });
+        });
+
+        // 삭제 버튼(.delete-btn) 클릭 시 이벤트 처리
+        $("#savedListContainer").on("click", ".delete-btn", function(e) {
+            e.stopPropagation(); // 상위 요소로의 클릭 이벤트 전파를 막습니다.
+
+            const index = $(this).closest('.tracking-item').data('index');
+            const trackingList = $("#savedListContainer").data('tracking-list');
+            const itemToDelete = trackingList[index];
+
+            if (confirm(`'${itemToDelete.toName}' 님의 배송 정보 (${itemToDelete.trackingNumber})를 정말 삭제하시겠습니까?`)) {
+                $.ajax({
+                    type: "DELETE",
+                    url: "/post/deleteLog",
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        toAddress: itemToDelete.toAddress,
+                        trackingNumber: itemToDelete.trackingNumber
+                    }),
+                    success: function(res) {
+                        if (res.message === "SUCCESS") {
+                            // alert("삭제되었습니다."); // 성공 시 alert도 제거하여 더 빠른 피드백 제공
+                            loadSavedTrackingList(); // 목록을 바로 다시 불러옵니다.
+                        } else {
+                            alert("삭제에 실패했습니다: " + (res.message || '알 수 없는 오류'));
+                        }
+                    },
+                    error: function() {
+                        alert("삭제 요청 중 오류가 발생했습니다.");
+                    }
+                });
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

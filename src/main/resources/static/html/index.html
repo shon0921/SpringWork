@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>타이틀</title>
+
+    <!-- Custom fonts for this template-->
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+
+    <!-- Custom styles for this template-->
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+        .custom-card {
+            max-width: 500px;
+            height: 640px;
+            margin: auto;
+        }
+
+        .card-img-top {
+            height: 50%;
+            object-fit: cover;
+            margin-top: 15px; /* 이미지 살짝 아래로 */
+        }
+
+        .user {
+            text-align: center;
+            padding-top: 20px; /* 원하는 만큼 아래로 내리기 */
+        }
+
+        .user a {
+            width: 85%;
+            min-height: 60px;
+            margin: 20px auto;
+            font-size: 1.3rem;
+            padding: 0 16px; /* 높이 증가: 위아래 padding 20px */
+            display: flex;           /* flex 컨테이너로 */
+            justify-content: center; /* 가로 가운데 정렬 */
+            align-items: center;     /* 세로 가운데 정렬 */
+            text-align: center;      /* 텍스트 정렬 (flex 없어도 가로 가운데용) */
+
+        }
+        .user a:first-child {
+            margin-top: 0 !important;
+        }
+    </style>
+    <script type="text/javascript" src="/js/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript">
+        // HTML로딩이 완료되고, 실행됨
+        $(document).ready(function () {
+
+            // 로그인
+            $("#Login").on("click", function () {  // 버튼 클릭했을때, 발생되는 이벤트 생성함(onclick 이벤트와 동일함)
+                location.href = "/login";
+            });
+
+            // 회원가입
+            $("#Register").on("click", function () {  // 버튼 클릭했을때, 발생되는 이벤트 생성함(onclick 이벤트와 동일함)
+                location.href = "/register";
+            });
+
+            // 비회원 배송조회
+            $("#Guestdeliverytracking").on("click", function () {  // 버튼 클릭했을때, 발생되는 이벤트 생성함(onclick 이벤트와 동일함)
+                location.href = "/guestdeliverytracking";
+            });
+
+        })
+    </script>
+</head>
+
+<body class="bg-gradient-primary">
+
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <img src="/img/img.png" class="card-img-top" alt="표지 이미지">
+        <div>
+            <form class="user">
+                <a href="/login" class="btn btn-primary btn-user btn-block submit-btn">로그인</a>
+                <a href="/register" class="btn btn-primary btn-user btn-block submit-btn">회원가입</a>
+                <a href="/guestdeliverytracking" class="btn btn-primary btn-user btn-block submit-btn">비회원 배송조회</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+
+</body>
+</html>

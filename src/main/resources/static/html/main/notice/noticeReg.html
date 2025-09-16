@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>공지사항 글쓰기</title>
+
+	<!-- 폰트 및 SB Admin 2 CSS -->
+	<link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+	<link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+	<link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+	<!-- 사용자 정의 스타일 -->
+	<style>
+		body {
+			background-color: #b2ebf2;
+		}
+
+		.custom-card {
+			max-width: 500px;
+			margin: auto;
+			background-color: white;
+			border-radius: 12px;
+			padding: 40px 20px;
+			box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			display: flex;
+			flex-direction: column;
+		}
+
+		h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			margin-bottom: 10px; /* 기존 30px에서 줄임 */
+			text-align: center;
+			color: #000;
+		}
+
+		label {
+			font-weight: bold;
+			margin-top: 15px;
+		}
+
+		input[type="text"],
+		textarea {
+			width: 100%;
+			padding: 12px;
+			border: 1px solid #ccc;
+			border-radius: 8px;
+			font-size: 1rem;
+			margin-top: 5px;
+		}
+
+		textarea {
+			resize: none;
+		}
+
+		.button-group {
+			display: flex;
+			justify-content: space-between;
+			margin-top: 30px;
+		}
+
+		/* 기존 스타일에서 배경색 제거 */
+		.form-button {
+			width: 48%;
+			padding: 12px;
+			font-size: 1.1rem;
+			border-radius: 8px;
+			border: 1px solid #ccc;
+			cursor: pointer;
+			transition: background-color 0.2s ease;
+			color: #fff;
+		}
+
+		#btnSend {
+			background-color: #007bff;
+			border-color: #007bff;
+		}
+
+		#btnSend:hover {
+			background-color: #0056b3;
+			border-color: #0056b3;
+		}
+
+		#btnReset {
+			background-color: #6c757d;
+			border-color: #6c757d;
+		}
+
+		#btnReset:hover {
+			background-color: #5a6268;
+			border-color: #5a6268;
+		}
+
+		.form-button:hover {
+			background-color: #f1f1f1;
+		}
+	</style>
+
+	<!-- jQuery + serializeObject -->
+	<script src="/js/jquery-3.6.0.min.js"></script>
+	<script src="/js/jquery.serializeObject.min.js"></script>
+
+	<script>
+		$(document).ready(function () {
+			$("#btnSend").on("click", function () {
+				doSubmit();
+			});
+
+			$("#btnReset").on("click", function () {
+				$("#inquiryForm")[0].reset();
+			});
+		});
+
+		function calBytes(str) {
+			let tcount = 0;
+			for (let i = 0; i < str.length; i++) {
+				let onechar = str.charAt(i);
+				tcount += (escape(onechar).length > 4) ? 2 : 1;
+			}
+			return tcount;
+		}
+
+		function doSubmit() {
+			const f = document.getElementById("inquiryForm");
+
+			if (f.title.value === "") {
+				alert("제목을 입력해주세요.");
+				f.title.focus();
+				return;
+			}
+
+			if (calBytes(f.title.value) > 200) {
+				alert("제목은 최대 200Bytes까지 입력 가능합니다.");
+				f.title.focus();
+				return;
+			}
+
+			if (f.contents.value === "") {
+				alert("내용을 입력해주세요.");
+				f.contents.focus();
+				return;
+			}
+
+			if (calBytes(f.contents.value) > 4000) {
+				alert("내용은 최대 4000Bytes까지 입력 가능합니다.");
+				f.contents.focus();
+				return;
+			}
+
+			$.ajax({
+				url: "/notice/noticeInsert",
+				type: "POST",
+				dataType: "json",
+				contentType: "application/json",
+				data: JSON.stringify($("#inquiryForm").serializeObject()),
+				success: function (json) {
+					alert(json.data?.msg || "등록 성공");
+					location.href = "/main/notice/noticeList";
+				},
+				error: function () {
+					alert("등록 실패");
+				}
+			});
+		}
+	</script>
+</head>
+
+<body>
+
+<div class="container">
+	<div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+		<h1>공지사항 글쓰기</h1>
+		<form id="inquiryForm">
+			<label for="title">제목</label>
+			<input type="text" id="title" name="title" maxlength="100">
+
+			<input type="hidden" name="noticeYn" value="Y">
+			<input type="hidden" name="readCnt" value="0">
+
+			<label for="contents">내용</label>
+			<textarea id="contents" name="contents" rows="10"></textarea>
+
+			<div class="button-group">
+				<button type="button" id="btnSend" class="form-button">글쓰기</button>
+				<button type="button" id="btnReset" class="form-button">다시쓰기</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<!-- Bootstrap & FontAwesome -->
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/fontawesome-free/js/all.min.js"></script>
+
+</body>
+</html>

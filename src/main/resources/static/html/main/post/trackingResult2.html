@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>배송 조회 결과</title>
+
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        body { -webkit-text-size-adjust: 100%; }
+        .custom-card { max-width: 500px; height: auto; margin: auto; }
+        .card-title { font-size: 1.5rem; text-align: center; font-weight: 700; margin-bottom: 20px; }
+        #summary p { font-size: 0.95rem; margin-bottom: 0.5rem; }
+        .table { width: 100%; margin-top: 15px; font-size: 0.9rem; }
+        .table th, .table td { padding: 12px 8px; vertical-align: middle; text-align: center; white-space: nowrap; }
+        .table td:last-child { text-align: left; white-space: normal; word-break: keep-all; }
+        #backButton { position: absolute; top: 20px; left: 20px; z-index: 10; background: none; border: none; padding: 0; cursor: pointer; font-size: 1.5rem; color: #858796; }
+        #backButton:hover { color: #5a5c69; }
+        #map { width: 100%; height: 300px; margin-top: 20px; border: 1px solid #e3e6f0; }
+        .map-loading { display: flex; justify-content: center; align-items: center; height: 100%; color: #888; }
+        .infowindow-content { padding: 8px 12px; font-size: 13px; text-align: center; border: 1px solid #ccc; background: white; border-radius: 4px; font-weight: 600; }
+        @media (max-width: 576px) {
+            .card-title { font-size: 1.3rem; }
+            #summary p { font-size: 0.9rem; }
+            .table { font-size: 0.8rem; }
+            .table th, .table td { padding: 10px 5px; }
+            #map { height: 250px; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-primary">
+
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <button type="button" id="backButton">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="card-body p-4">
+            <h1 class="card-title text-center mb-4">배송 조회 결과</h1>
+            <div id="summary">
+                <p><strong>택배사:</strong> <span id="carrierName"></span></p>
+                <p><strong>송장번호:</strong> <span id="trackingNumberDisplay"></span></p>
+                <p><strong>보낸 사람:</strong> <span id="fromName"></span></p>
+                <p><strong>받는 사람:</strong> <span id="toName"></span></p>
+                <p><strong>배송 상태:</strong> <span id="stateText"></span></p>
+            </div>
+            <div class="table-responsive">
+                <table id="trackingTable" class="table table-bordered">
+                    <thead><tr><th>시간</th><th>상태</th><th>위치</th><th>설명</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="map"><div class="map-loading">지도 로딩 중...</div></div>
+            <div class="text-center">
+                <button id="saveOrDeleteBtn" class="btn btn-primary mt-4" disabled>로딩 중...</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 모든 스크립트는 body 하단에 위치시킵니다. -->
+<script src="/js/jquery-3.6.0.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=81fdc7b327d29dbcddbf72af3b99d04f&libraries=services"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+
+<script>
+    // --- 전역 변수 및 설정 ---
+    const GEMINI_API_KEY = "AIzaSyC6z4uxAWoUTTozxaHeHZ8wkQiPLaOAURw";
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const carrierMap = { 'kr.cjlogistics': 'CJ대한통운', 'kr.epost': '우체국택배', 'kr.hanjin': '한진택배', 'kr.lotte': '롯데택배' };
+    let latestTrackingData = null;      // API로부터 받은 순수 배송 정보 (TrackingDTO)
+    let requestToAddress = '';          // 조회 시 사용했던 '도착 주소'
+    let requestTrackingNumber = '';     // 조회 시 사용했던 '송장 번호'
+    let isSaved = false;                // DB에 저장되었는지 여부
+    let refinedStartInfo = { address: '', lat: null, lng: null }; // 지도 경로 그리기를 위한 출발지 정보
+
+    // --- 헬퍼 함수 ---
+    function formatDateTime(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    async function getRefinedSearchTerm(ambiguousTerm) {
+        console.log(`[1단계: Gemini 호출] 모호한 검색어 '${ambiguousTerm}' 정제를 시작합니다.`);
+        const prompt = `당신은 한국의 택배 시스템과 지리에 매우 능숙한 주소 변환 전문가입니다. 사용자가 입력한 모호한 배송 위치 키워드를 카카오맵 API에서 검색하기 가장 좋은, 명확하고 구체적인 장소 이름으로 변환해주세요. 다른 설명은 일체 하지 말고, 변환된 최종 장소 이름만 답변해야 합니다. 예시: 입력: 경기 김포 cj, 출력: CJ대한통운 김포 대리점 / 입력: 김포우체국, 출력: 김포우체국 / 입력: ${ambiguousTerm}, 출력:`;
+        try {
+            const response = await fetch(GEMINI_API_URL, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+            if (!response.ok) throw new Error(`Gemini API 오류: ${response.status}`);
+            const data = await response.json();
+            const refinedTerm = data.candidates[0].content.parts[0].text.trim();
+            console.log(`[2단계: Gemini 응답] 성공적으로 변환했습니다. 👉 '${refinedTerm}'`);
+            return refinedTerm;
+        } catch (error) {
+            console.error("[Gemini 호출 실패]", error);
+            return ambiguousTerm;
+        }
+    }
+
+    async function getDirection(start, end, map) {
+        const KAKAO_REST_API_KEY = "e6363c30237aa9b08e811ac1c81fb9b4";
+        try {
+            const response = await fetch(`https://apis-navi.kakaomobility.com/v1/directions?origin=${start.getLng()},${start.getLat()}&destination=${end.getLng()},${end.getLat()}`, {
+                headers: { 'Authorization': `KakaoAK ${KAKAO_REST_API_KEY}`, 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error(`경로 API 오류: ${response.status}`);
+            const data = await response.json();
+            if (data.routes && data.routes.length > 0) {
+                const linePath = data.routes[0].sections.flatMap(section =>
+                    section.roads.flatMap(road => {
+                        const path = [];
+                        for (let i = 0; i < road.vertexes.length; i += 2) {
+                            path.push(new kakao.maps.LatLng(road.vertexes[i + 1], road.vertexes[i]));
+                        }
+                        return path;
+                    })
+                );
+                new kakao.maps.Polyline({
+                    path: linePath, strokeWeight: 5, strokeColor: '#007bff', strokeOpacity: 0.8, strokeStyle: 'solid'
+                }).setMap(map);
+            }
+        } catch (e) {
+            console.error("경로 API 오류:", e);
+        }
+    }
+
+    function showSimpleInfoWindow(map, marker, text) {
+        const content = `<div style="padding: 8px 12px; font-size: 13px; text-align: center; border: 1px solid #ccc; background: white; border-radius: 4px; font-weight: 600;">${text}</div>`;
+        const infowindow = new kakao.maps.InfoWindow({ content: content, removable: true });
+        infowindow.open(map, marker);
+    }
+
+    async function drawRouteWithGemini(startAddr, endAddr, map, geocoder, ps) {
+        const refinedAddr = await getRefinedSearchTerm(startAddr);
+        console.log(`[3단계: 카카오맵 호출] 정제된 검색어 '${refinedAddr}'로 장소 검색을 시작합니다.`);
+        refinedStartInfo.address = refinedAddr;
+        ps.keywordSearch(refinedAddr, (places, status) => {
+            if (status === kakao.maps.services.Status.OK && places.length > 0) {
+                const foundPlace = places[0];
+                const startCoords = new kakao.maps.LatLng(foundPlace.y, foundPlace.x);
+                refinedStartInfo.lat = foundPlace.y;
+                refinedStartInfo.lng = foundPlace.x;
+                const marker = new kakao.maps.Marker({ map, position: startCoords });
+                showSimpleInfoWindow(map, marker, "출발지");
+                searchEndAndDrawRoute(startCoords, endAddr, map, geocoder);
+            } else {
+                console.error(`출발지 위치 '${refinedAddr}'를 찾을 수 없습니다.`);
+                searchEndAndDrawRoute(null, endAddr, map, geocoder);
+            }
+        });
+    }
+
+    function searchEndAndDrawRoute(startCoords, endAddr, map, geocoder) {
+        geocoder.addressSearch(endAddr, (endResult, status) => {
+            if (status === kakao.maps.services.Status.OK) {
+                const endCoords = new kakao.maps.LatLng(endResult[0].y, endResult[0].x);
+                const marker = new kakao.maps.Marker({ map, position: endCoords });
+                showSimpleInfoWindow(map, marker, "도착지");
+                if (startCoords) {
+                    const bounds = new kakao.maps.LatLngBounds();
+                    bounds.extend(startCoords);
+                    bounds.extend(endCoords);
+                    map.setBounds(bounds);
+                    getDirection(startCoords, endCoords, map);
+                } else {
+                    map.setCenter(endCoords);
+                }
+            } else {
+                $("#map").html('<div class="map-loading">도착지 좌표를 찾을 수 없습니다.</div>');
+            }
+        });
+    }
+
+    // DTO 구조에 맞게 화면의 데이터를 렌더링하는 함수
+    function renderTrackingData(dto) {
+        // [수정] 송장번호는 DTO에 없으므로, 이 함수에서는 렌더링하지 않습니다.
+        // 메인 로직에서 별도로 처리합니다.
+        $("#carrierName").text(dto.carrier?.name || '정보 없음');
+        $("#fromName").text(dto.from?.name || '정보 없음');
+        $("#toName").text(dto.to?.name || '정보 없음');
+        $("#stateText").text(dto.state?.text || '정보 없음');
+        const progresses = dto.progresses || [];
+        const displayProgresses = progresses.filter(item => item.status?.text !== '인수자등록');
+        const tbody = $("#trackingTable tbody").empty();
+        if (displayProgresses.length > 0) {
+            displayProgresses.forEach(item => {
+                const row = `<tr><td>${formatDateTime(item.time)}</td><td>${item.status?.text || '상태 없음'}</td><td>${item.location?.name || '위치 없음'}</td><td>${item.description || ''}</td></tr>`;
+                tbody.append(row);
+            });
+        } else {
+            tbody.append('<tr><td colspan="4">배송 진행 현황이 없습니다.</td></tr>');
+        }
+    }
+
+    // DB에 저장된 기록인지 확인하는 함수
+    async function checkIfSaved() {
+        if (!requestToAddress || !requestTrackingNumber) return;
+        try {
+            isSaved = await $.get("/post/checkLogExist", {
+                toAddress: requestToAddress,
+                trackingNumber: requestTrackingNumber
+            });
+            console.log(`저장 여부 확인 결과: ${isSaved}`);
+        } catch (e) {
+            console.error("저장 여부 확인 실패", e);
+            isSaved = false;
+        }
+    }
+
+    // 저장/삭제 버튼의 상태를 업데이트하는 함수
+    function updateButton() {
+        const $btn = $("#saveOrDeleteBtn");
+        if (!latestTrackingData) return;
+        $btn.prop("disabled", false);
+        if (isSaved) {
+            $btn.text("배송조회 결과 삭제").removeClass("btn-primary").addClass("btn-danger");
+        } else {
+            $btn.text("배송조회 결과 저장").removeClass("btn-danger").addClass("btn-primary");
+        }
+    }
+
+    // 페이지가 로드될 때 실행되는 메인 로직
+    $(document).ready(async function() {
+        // [추가] 1. sessionStorage에서 돌아갈 주소(returnUrl)를 읽어옵니다.
+        const returnUrl = sessionStorage.getItem('returnUrl');
+
+        // [수정] 2. 뒤로가기 버튼의 동작을 설정합니다. returnUrl이 있으면 그곳으로, 없으면 기본 주소로 이동합니다.
+        const fallbackUrl = "/main/post/deliverytracking"; // 기본값
+        $("#backButton").on("click", function () {
+            location.href = returnUrl || fallbackUrl;
+        });
+
+        // 1. 브라우저의 sessionStorage에서 데이터(문자열)를 가져옵니다.
+        const liveTrackingDataStr = sessionStorage.getItem('latestTrackingData');
+        console.log("결과 페이지 로드됨. sessionStorage 데이터 확인:", liveTrackingDataStr);
+
+        const mapContainer = document.getElementById('map');
+        const map = new kakao.maps.Map(mapContainer, { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 7 });
+        const geocoder = new kakao.maps.services.Geocoder();
+        const ps = new kakao.maps.services.Places();
+
+        try {
+            if (liveTrackingDataStr) {
+                // 2. 문자열을 Javascript 객체로 파싱합니다.
+                const dataFromStorage = JSON.parse(liveTrackingDataStr);
+
+                // 3. [핵심] 객체 구조에 맞게 데이터를 추출하여 전역 변수에 할당합니다.
+                latestTrackingData = dataFromStorage.trackingInfo;      // 실제 배송 정보 DTO
+                requestToAddress = dataFromStorage.toAddress;          // 조회 시 사용한 도착 주소
+                requestTrackingNumber = dataFromStorage.trackingNumber;  // 조회 시 사용한 송장 번호
+
+                console.log("추출된 배송정보 DTO:", latestTrackingData);
+                console.log("추출된 도착주소:", requestToAddress);
+                console.log("추출된 송장번호:", requestTrackingNumber);
+
+                // 4. 추출한 데이터로 화면을 렌더링합니다.
+                // 송장번호는 DTO에 없으므로, 전역 변수에서 가져와 직접 화면에 표시합니다.
+                $("#trackingNumberDisplay").text(requestTrackingNumber || '정보 없음');
+                renderTrackingData(latestTrackingData);
+
+                // 5. DB에 이미 저장된 기록인지 서버에 확인합니다.
+                await checkIfSaved();
+
+                // 6. 배송 진행 내역이 있으면 지도 경로를 그립니다.
+                if (latestTrackingData.progresses && latestTrackingData.progresses.length > 0) {
+                    let startLocationName = '';
+                    for (let i = latestTrackingData.progresses.length - 1; i >= 0; i--) {
+                        const locationName = latestTrackingData.progresses[i].location?.name;
+                        if (locationName && locationName !== '고객') {
+                            startLocationName = locationName;
+                            break;
+                        }
+                    }
+                    if (startLocationName) {
+                        const carrierName = carrierMap[latestTrackingData.carrier.id] || '';
+                        const searchTerm = `${startLocationName} ${carrierName}`;
+                        await drawRouteWithGemini(searchTerm, requestToAddress, map, geocoder, ps);
+                    } else {
+                        $("#map").html('<div class="map-loading">유효한 출발지 정보를 찾을 수 없습니다.</div>');
+                    }
+                } else {
+                    $("#map").html('<div class="map-loading">배송 시작 전이거나 위치 정보가 없습니다.</div>');
+                }
+            } else {
+                // 표시할 데이터가 없는 경우
+                $("#summary").html("<p class='text-center'>조회할 배송 정보가 없습니다.</p>");
+                $("#map, #trackingTable, #saveOrDeleteBtn").hide();
+            }
+        } catch (err) {
+            console.error("결과 페이지 렌더링 중 오류 발생:", err);
+            alert("페이지를 로드하는 데 실패했습니다: " + err.message);
+            $("#map").html('<div class="map-loading">데이터 로딩 실패</div>');
+        } finally {
+            // 7. 모든 작업이 끝난 후 버튼 상태를 업데이트하고, 임시 데이터를 정리합니다.
+            updateButton();
+            sessionStorage.removeItem('latestTrackingData');
+            // [추가] 사용한 returnUrl 정보도 함께 정리합니다.
+            sessionStorage.removeItem('returnUrl');
+            console.log("임시 sessionStorage 데이터를 정리했습니다.");
+        }
+    });
+
+    // 저장/삭제 버튼 클릭 이벤트
+    $("#saveOrDeleteBtn").on("click", function () {
+        if (!latestTrackingData) return alert("데이터가 로드되지 않았습니다.");
+        const $btn = $(this);
+        $btn.prop('disabled', true);
+
+        if (isSaved) {
+            // 삭제 로직: 전역 변수인 requestToAddress와 requestTrackingNumber를 사용합니다.
+            $.ajax({
+                type: "DELETE", url: "/post/deleteLog", contentType: "application/json",
+                data: JSON.stringify({
+                    toAddress: requestToAddress,
+                    trackingNumber: requestTrackingNumber
+                })
+            }).done(res => {
+                if (res.message === "SUCCESS") {
+                    alert("삭제되었습니다.");
+                    isSaved = false;
+                    updateButton();
+                } else {
+                    alert("삭제 실패: " + (res.message || ''));
+                }
+            }).fail(() => alert("삭제 요청 중 오류 발생"))
+                .always(() => $btn.prop('disabled', false));
+        } else {
+            // 저장 로직: 전역 변수들을 사용하여 서버로 보낼 DTO를 구성합니다.
+            let lastTime = null;
+            const displayProgresses = (latestTrackingData.progresses || []).filter(p => p.status?.text !== '인수자등록');
+            if (displayProgresses.length > 0) {
+                lastTime = displayProgresses[displayProgresses.length - 1].time;
+            }
+
+            let notifSentOutForDelivery = false;
+            let notifSentDelivered = false;
+            const currentStateId = latestTrackingData.state?.id;
+
+            if (currentStateId === 'out_for_delivery' || currentStateId === 'delivered') { notifSentOutForDelivery = true; }
+            if (currentStateId === 'delivered') { notifSentDelivered = true; }
+
+            const saveDto = {
+                carrierId: latestTrackingData.carrier.id,
+                carrierName: latestTrackingData.carrier.name,
+                fromName: latestTrackingData.from.name,
+                toName: latestTrackingData.to.name,
+                stateId: latestTrackingData.state.id,
+                stateText: latestTrackingData.state.text,
+                toAddress: requestToAddress,
+                trackingNumber: requestTrackingNumber,
+                lastDeliveryTime: lastTime,
+                startAddress: refinedStartInfo.address,
+                startLat: refinedStartInfo.lat,
+                startLng: refinedStartInfo.lng,
+                notificationSentForOutForDelivery: notifSentOutForDelivery,
+                notificationSentForDelivered: notifSentDelivered
+            };
+
+            $.ajax({
+                type: "POST", url: "/post/saveLog", contentType: "application/json",
+                data: JSON.stringify(saveDto)
+            }).done(res => {
+                if (res.message === "SUCCESS") {
+                    alert("저장되었습니다.");
+                    isSaved = true;
+                    updateButton();
+                } else {
+                    alert("저장 실패: " + (res.message || ''));
+                }
+            }).fail(() => alert("저장 요청 중 오류 발생"))
+                .always(() => $btn.prop('disabled', false));
+        }
+    });
+</script>
+
+</body>
+</html>

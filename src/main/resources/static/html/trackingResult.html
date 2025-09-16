@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>배송 조회 결과</title>
+
+    <!-- 외부 리소스 -->
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <script src="/js/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body {
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* [수정 1] 카드 너비와 위치를 참조 코드와 완전히 동일하게 설정 */
+        .custom-card {
+            max-width: 500px;
+            height: auto;      /* 높이는 내용에 따라 유동적으로 */
+            margin: auto;      /* 화면 중앙 정렬 */
+        }
+
+        /* 제목 */
+        .card-title {
+            font-size: 1.5rem;
+            text-align: center;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        #summary p {
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* 표 스타일 */
+        .table {
+            width: 100%;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .table th, .table td {
+            padding: 12px 8px;
+            vertical-align: middle;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .table td:last-child {
+            text-align: left;
+            white-space: normal;
+            word-break: keep-all;
+        }
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #858796;
+        }
+
+        #backButton:hover {
+            color: #5a5c69;
+        }
+
+
+        /* 모바일 대응 미디어 쿼리 */
+        @media (max-width: 576px) {
+            /* [핵심 수정] 모바일에서 카드의 너비를 변경하던 규칙을 완전히 삭제하여
+               참조 페이지와 동일한 너비 동작을 하도록 만듭니다. */
+
+            /* 내부 글씨 크기 등 가독성을 위한 스타일은 그대로 유지합니다. */
+            .card-title {
+                font-size: 1.3rem;
+            }
+
+            #summary p {
+                font-size: 0.9rem;
+            }
+
+            .table {
+                font-size: 0.8rem;
+            }
+
+            .table th, .table td {
+                padding: 10px 5px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-primary">
+
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <button type="button" id="backButton">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="card-body p-4">
+            <h1 class="card-title">배송 조회 결과</h1>
+
+            <div id="summary">
+                <p><strong>택배사:</strong> <span id="carrierName"></span></p>
+                <p><strong>보낸 사람:</strong> <span id="fromName"></span></p>
+                <p><strong>받는 사람:</strong> <span id="toName"></span></p>
+                <p><strong>배송 상태:</strong> <span id="stateText"></span></p>
+            </div>
+
+            <div class="table-responsive">
+                <table id="trackingTable" class="table table-bordered">
+                    <thead>
+                    <tr>
+                        <th>시간</th>
+                        <th>상태</th>
+                        <th>위치</th>
+                        <th>설명</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 진행상황이 여기에 삽입됨 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // [수정 3] 가장 중요한 부분: 시간 포맷을 날짜와 시간으로 나누어 두 줄로 표시
+    function formatDateTime(dateString) {
+        const date = new Date(dateString);
+        const pad = (n) => n.toString().padStart(2, '0');
+        const yyyy = date.getFullYear();
+        const mm = pad(date.getMonth() + 1);
+        const dd = pad(date.getDate());
+        const hh = pad(date.getHours());
+        const mi = pad(date.getMinutes());
+        const ss = pad(date.getSeconds());
+        // 날짜와 시간 사이에 <br> 태그를 넣어 줄바꿈 처리
+        return `${yyyy}-${mm}-${dd}<br>${hh}:${mi}:${ss}`;
+    }
+
+    $(document).ready(function () {
+
+        $("#backButton").on("click", function () {
+            location.href = "/guestdeliverytracking";
+        });
+
+        $.ajax({
+            url: "/tracking/sessionData",
+            method: "GET",
+            dataType: "json"
+        }).done(function (data) {
+            if (data) {
+                $("#carrierName").text(data.carrier.name);
+                $("#fromName").text(data.from.name);
+                $("#toName").text(data.to.name);
+                $("#stateText").text(data.state.text);
+
+                const progresses = data.progresses;
+                const tbody = $("#trackingTable tbody");
+                tbody.empty();
+
+                if (progresses && progresses.length > 0) {
+                    progresses.forEach(function (item) {
+                        const formattedTime = formatDateTime(item.time);
+                        const row = `
+                          <tr>
+                            <td>${formattedTime}</td>
+                            <td>${item.status.text}</td>
+                            <td>${item.location.name}</td>
+                            <td>${item.description}</td>
+                          </tr>
+                        `;
+                        tbody.append(row);
+                    });
+                } else {
+                    const noDataRow = '<tr><td colspan="4">배송 진행 정보가 없습니다.</td></tr>';
+                    tbody.append(noDataRow);
+                }
+            }
+        }).fail(function (xhr, status, error) {
+            console.error("조회 실패", error);
+            $("#trackingTable tbody").html('<tr><td colspan="4" class="text-danger">정보를 불러오는 데 실패했습니다.</td></tr>');
+        });
+    });
+</script>
+
+<!-- JS 리소스 -->
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+
+</body>
+</html>

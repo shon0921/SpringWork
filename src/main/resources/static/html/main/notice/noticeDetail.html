@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>공지사항 상세보기</title>
+
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #b2ebf2;
+        }
+
+        .custom-card {
+            max-width: 800px;
+            margin: 40px auto;
+            background-color: white;
+            border-radius: 0.35rem;
+            border: 1px solid #e3e6f0;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            color: #3a3b45;
+        }
+
+        .notice-table {
+            width: 100%;
+            border-top: 2px solid #3a3b45;
+        }
+        .notice-table tr {
+            border-bottom: 1px solid #e3e6f0;
+        }
+        .notice-table th, .notice-table td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        .notice-table th {
+            width: 100px;
+            font-weight: 700;
+            color: #5a5c69;
+            background-color: #f8f9fc;
+            text-align: center;
+        }
+        .notice-table td {
+            line-height: 1.6;
+        }
+        .notice-table tr:has(td#contents) th {
+            vertical-align: top;
+            padding-top: 1.1rem;
+        }
+
+        #contents {
+            min-height: 200px;
+            white-space: pre-wrap;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 2rem;
+            padding: 0 1rem 1rem;
+        }
+
+        .form-button {
+            font-weight: 600;
+        }
+    </style>
+
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script>
+        function getParameterByName(name) {
+            const url = window.location.href;
+            name = name.replace(/[\[\]]/g, '\\$&');
+            const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+            const results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        let noticeData = null;
+
+        function loadNoticeInfo() {
+            const nSeq = getParameterByName('nSeq');
+            if (!nSeq) {
+                alert("잘못된 접근입니다.");
+                location.href = "/main/notice/noticeList";
+                return;
+            }
+
+            $.ajax({
+                url: '/notice/noticeInfo',
+                type: 'GET',
+                data: { nSeq: nSeq },
+                success: function(response) {
+                    if (response.message === 'SUCCESS') {
+                        noticeData = response.data.notice;
+
+                        $('#title').text(noticeData.title);
+                        $('#regDt').text(noticeData.regDt);
+                        $('#readCnt').text(noticeData.readCnt);
+                        $('#contents').html(noticeData.contents.replace(/\n/g, '<br/>'));
+
+                        // [핵심 추가] 수정일(chgDt)이 있을 경우에만 해당 행을 보여줍니다.
+                        if (noticeData.chgDt) {
+                            $('#chgDt').text(noticeData.chgDt);
+                            $('#chgDtRow').show(); // 숨겨져 있던 수정일 행을 보여줌
+                        }
+
+                        const adminYn = sessionStorage.getItem("adminYn");
+
+                        if (adminYn === 'Y') {
+                            $('#btnEdit, #btnDelete').show();
+                        } else {
+                            $('#btnEdit, #btnDelete').hide();
+                        }
+                    } else {
+                        alert("공지사항을 불러오는 데 실패했습니다.");
+                    }
+                },
+                error: function() {
+                    alert("에러가 발생했습니다.");
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            loadNoticeInfo();
+
+            $('#btnEdit').on('click', function() {
+                if(noticeData) {
+                    location.href = "/main/notice/noticeEditInfo?nSeq=" + noticeData.noticeSeq;
+                }
+            });
+
+            $('#btnDelete').on('click', function() {
+                if (noticeData && confirm("작성한 글을 삭제하시겠습니까?")) {
+                    $.ajax({
+                        url: "/notice/noticeDelete",
+                        type: "POST",
+                        dataType: "json",
+                        data: { nSeq: noticeData.noticeSeq },
+                        success: function(json) {
+                            alert(json.data.msg);
+                            location.href = "/main/notice/noticeList";
+                        },
+                        error: function() {
+                            alert("삭제 중 에러가 발생했습니다.");
+                        }
+                    });
+                }
+            });
+
+            $('#btnList').on('click', function() {
+                location.href = "/main/notice/noticeList";
+            });
+        });
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <div class="card shadow-sm my-5 custom-card">
+        <div class="card-body p-4 p-md-5">
+            <h1>공지사항 상세보기</h1>
+
+            <table class="notice-table">
+                <tbody>
+                <tr>
+                    <th>제목</th>
+                    <td id="title"></td>
+                </tr>
+                <tr>
+                    <th>작성일</th>
+                    <td id="regDt"></td>
+                </tr>
+                <!-- [핵심 추가] 수정일 행을 추가하고, 기본적으로 숨김 처리 -->
+                <tr id="chgDtRow" style="display: none;">
+                    <th>수정일</th>
+                    <td id="chgDt"></td>
+                </tr>
+                <tr>
+                    <th>조회수</th>
+                    <td id="readCnt"></td>
+                </tr>
+                <tr>
+                    <th>내용</th>
+                    <td id="contents"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="button-group">
+            <button id="btnEdit" class="btn btn-primary form-button" style="display:none;">수정</button>
+            <button id="btnDelete" class="btn btn-danger form-button" style="display:none;">삭제</button>
+            <button id="btnList" class="btn btn-secondary form-button">목록</button>
+        </div>
+    </div>
+</div>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
