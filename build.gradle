@@ -23,6 +23,16 @@ repositories {
     mavenCentral()
 }
 
+ext {
+    set('springCloudVersion', "2024.0.1")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
 dependencies {
     implementation 'net.nurigo:sdk:4.3.0'
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
@@ -31,9 +41,12 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.17.2'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.ehcache:ehcache:3.10.8'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
