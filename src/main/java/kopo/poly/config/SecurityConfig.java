@@ -30,7 +30,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/**").permitAll() // 로그인 및 인증 관련 API는 허용
-                        .requestMatchers("/main/**").authenticated() // /main/ 경로는 인증된 사용자만 접근 가능
+                        .requestMatchers("/main/**").hasRole("USER") // 수정된 부분: "USER" 역할을 가진 사용자만 접근 가능
                         .anyRequest().permitAll() // 나머지 모든 요청은 허용
                 )
                 .sessionManagement(session -> session
