@@ -30,30 +30,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
-                                "/",
-                                "/login",
-                                "/register",
-                                "/forgotpassword",
-                                "/forgotpassword2",
-                                "/forgotpassword3",
-                                "/trackingResult",
-                                "/guestdeliverytracking",
-                                "/user/register1", // `UserController`의 회원가입 관련 경로들 허용
-                                "/user/resendAuthCode",
-                                "/user/register2",
-                                "/user/login",
-                                "/user/forgotpassword1",
-                                "/user/forgotpassword2",
-                                "/user/forgotpassword3",
-                                "/api/auth/**",
-                                "/css/**", // 모든 정적 리소스 허용
-                                "/js/**",
-                                "/img/**",
-                                "/vendor/**",
-                                "/html/**"
+                                "/api/auth/**", // 로그인 및 인증 관련 API는 허용
+                                "/user/**", // 회원가입, 비밀번호 찾기 등 UserController의 모든 경로를 허용
+                                "/css/**", "/js/**", "/img/**", "/vendor/**", "/html/**" // 정적 리소스 및 공개 HTML 페이지 허용
                         ).permitAll()
-                        .requestMatchers("/main/**").hasRole("USER") // "/main" 경로만 "USER" 역할 가진 사용자에게 허용
-                        .anyRequest().authenticated() // 나머지 모든 요청은 인증 필요
+                        .requestMatchers("/main/**").authenticated() // "/main"으로 시작하는 모든 경로는 인증된 사용자만 접근 가능
+                        .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
