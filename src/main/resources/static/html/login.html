@@ -110,18 +110,26 @@
                     dataType: "JSON",
                     data: JSON.stringify($("#f").serializeObject()),
                 }).then(
-                    function (json) {
-                        alert(json.data.msg);
-                        if (json.data.result === 1) {
-                            $("#loginErrorMsg").hide();
-                            sessionStorage.setItem("userId", json.data.userId);
-                            sessionStorage.setItem("regDt", json.data.regDt);
-                            sessionStorage.setItem("adminYn", json.data.adminYn);
+                    function (response) {
+                        if (response.data && response.data.result === 1 && response.data.token) {
+                            // JWT 토큰을 localStorage에 저장
+                            localStorage.setItem("jwtToken", response.data.token);
+                            alert("로그인 성공");
                             location.href = "/main/title";
+                        } else {
+                            // 서버로부터 예상치 못한 응답을 받은 경우
+                            $("#loginErrorText").text("로그인 실패: 유효하지 않은 응답");
+                            $("#loginErrorMsg").show();
                         }
                     },
-                    function () {
-                        alert("로그인 실패");
+                    function (xhr) {
+                        // 로그인 실패 시 서버에서 보낸 에러 메시지를 표시
+                        let errorMsg = "로그인 실패";
+                        if (xhr.responseJSON && xhr.responseJSON.msg) {
+                            errorMsg = xhr.responseJSON.msg;
+                        }
+                        $("#loginErrorText").text(errorMsg);
+                        $("#loginErrorMsg").show();
                     }
                 );
             });

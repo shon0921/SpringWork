@@ -64,6 +64,18 @@
         var userId = sessionStorage.getItem('userId');
         // HTML로딩이 완료되고, 실행됨
         $(document).ready(function () {
+
+            // JWT 토큰이 존재하는지 확인하여 로그인 상태를 확인
+            const jwtToken = localStorage.getItem("jwtToken");
+            if (jwtToken) {
+                // 토큰이 존재하면 서버에 유효성 검증 요청을 보내거나 토큰에서 정보를 추출하여 사용자 ID를 표시
+                // 여기서는 단순화하여 로그인 상태만 확인하고 환영 메시지를 표시합니다.
+                // 실제 구현에서는 서버의 보호된 API를 호출하여 사용자 정보를 가져오는 것이 좋습니다.
+                $("#nicknameBox").text("환영합니다!");
+            } else {
+                // 토큰이 없으면 로그인 페이지로 리다이렉트
+                location.href = "/login.html";
+            }
             // 사용자 아이디 표시
             $("#nicknameBox").text("로그인한 사용자 ID: " + userId);
 

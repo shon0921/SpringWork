@@ -7,6 +7,7 @@ import kopo.poly.dto.MsgDTO;
 import kopo.poly.dto.UserDTO;
 import kopo.poly.service.IUserService;
 import kopo.poly.util.EncryptUtil;
+import kopo.poly.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,8 @@ import java.util.Map;
 public class UserController {
 
     private final IUserService userService;
+
+    private final JwtUtil jwtUtil; // JwtUtil 주입
 
     @PostMapping("/register1")
     public ResponseEntity<?> register(@Valid @RequestBody UserDTO pDTO, BindingResult bindingResult, HttpSession session) throws Exception {
@@ -168,7 +171,7 @@ public class UserController {
 
     // 로그인 처리
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserDTO pDTO, HttpSession session) throws Exception {
+    public ResponseEntity<?> login(@RequestBody UserDTO pDTO) throws Exception {
         log.info("{}.login Start!", this.getClass().getName());
 
         // 비밀번호 SHA256 암호화
@@ -177,38 +180,31 @@ public class UserController {
         UserDTO loginUser = userService.login(pDTO);
 
         if (loginUser != null) {
-            // 로그인 성공, 세션에 유저 정보 저장
-            session.setAttribute("userId", loginUser.getUserId());
-            session.setAttribute("regDt", loginUser.getRegDt());
-            session.setAttribute("adminYn", loginUser.getAdminYn());
+            // 로그인 성공, JWT 토큰 생성
+            String token = jwtUtil.generateToken(loginUser.getUserId());
+            log.info("{}.login Success: JWT token generated for userId={}", this.getClass().getName(), loginUser.getUserId());
 
-            log.info("{}.login Success: session set userId={}, regDt={}, adminYn={}",
-                    this.getClass().getName(),
-                    loginUser.getUserId(),
-                    loginUser.getRegDt(),
-                    loginUser.getAdminYn());
+            // 토큰을 포함한 응답 객체 생성
+            Map<String, Object> data = new HashMap<>();
+            data.put("result", 1);
+            data.put("msg", "로그인 성공");
+            data.put("token", token);
+            data.put("userId", loginUser.getUserId()); // 필요한 경우 userId도 함께 반환
 
-            MsgDTO dto = MsgDTO.builder()
-                    .result(1)
-                    .msg("로그인 성공")
-                    .userId(loginUser.getUserId())
-                    .regDt(loginUser.getRegDt())
-                    .adminYn(loginUser.getAdminYn())
-                    .build();
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", data);
 
-            log.info("{}.login End! Returning success response", this.getClass().getName());
-            return ResponseEntity.ok(CommonResponse.of(HttpStatus.OK, "SUCCESS", dto));
+            return ResponseEntity.ok(response);
         } else {
             // 로그인 실패
             log.warn("{}.login Failed for userId: {}", this.getClass().getName(), pDTO.getUserId());
 
             MsgDTO dto = MsgDTO.builder()
                     .result(0)
-                    .msg("로그인 실패")
+                    .msg("로그인 실패: 아이디 또는 비밀번호를 확인해주세요.")
                     .userId(pDTO.getUserId())
                     .build();
 
-            log.info("{}.login End! Returning failure response", this.getClass().getName());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(CommonResponse.of(HttpStatus.UNAUTHORIZED, "LOGIN_FAILED", dto));
         }
