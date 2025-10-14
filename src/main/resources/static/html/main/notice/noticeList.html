@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>공지사항</title>
+
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #b2ebf2;
+        }
+
+        .custom-card {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: white;
+            border-radius: 0.35rem;
+            padding: 2.5rem;
+            box-shadow: 0 .15rem 1.75rem 0 rgba(58,59,69,.15) !important;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: #3a3b45;
+            text-align: center;
+        }
+
+        .notice-button {
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #000;
+            text-align: left;
+            border: 1px solid #e3e6f0;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .notice-button:hover {
+            background-color: #f8f9fc;
+            border-color: #d1d3e2;
+        }
+
+        .notice-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .writer-info {
+            font-size: 0.85rem;
+            color: #858796;
+            display: flex;
+            /* [핵심 수정 1] 날짜만 오른쪽으로 정렬하기 위해 flex-end 사용 */
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .write-button {
+            margin-top: 20px;
+            align-self: flex-end;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            color: #fff;
+            background-color: #4e73df;
+            border: 1px solid #4e73df;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .write-button:hover {
+            background-color: #2e59d9;
+        }
+
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #858796;
+        }
+
+        #backButton:hover {
+            color: #5a5c69;
+        }
+    </style>
+
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script>
+        function doDetail(seq) {
+            location.href = "/main/notice/noticeDetail?nSeq=" + seq;
+        }
+
+        function loadNoticeList() {
+            $.ajax({
+                url: '/notice/noticeList',
+                type: 'GET',
+                success: function(response) {
+                    if (response.message === 'SUCCESS') {
+                        const rList = response.data;
+                        let html = '';
+
+                        rList.forEach(function(dto) {
+                            const displayTime = dto.chgDt || dto.regDt;
+
+                            // [핵심 수정 2] HTML 구조에서 작성자(<span class="writer-id">) 부분만 제거
+                            html += `
+                                <button class="notice-button" onclick="doDetail('${dto.noticeSeq}')">
+                                    <span class="notice-title">${dto.title}</span>
+                                    <div class="writer-info">
+                                        <span class="update-time">${displayTime}</span>
+                                    </div>
+                                </button>
+                            `;
+                        });
+
+                        $("#noticeList").html(html);
+                    }
+                },
+                error: function() {
+                    alert("에러가 발생했습니다.");
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            $("#backButton").on("click", function () {
+                location.href = "/main/title";
+            });
+
+            loadNoticeList();
+
+            const adminYn = sessionStorage.getItem("adminYn");
+
+            if (adminYn !== "Y") {
+                $(".write-button").hide();
+            }
+        });
+    </script>
+</head>
+
+<body>
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <button type="button" id="backButton">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <h1>공지사항</h1>
+        <div id="noticeList" style="width: 100%;"></div>
+        <button class="write-button" onclick="location.href='/main/notice/noticeReg'">글쓰기</button>
+    </div>
+</div>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

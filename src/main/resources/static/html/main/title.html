@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>메인</title>
+
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+        .custom-card {
+            max-width: 500px;
+            height: 720px;
+            margin: auto;
+            position: relative;
+        }
+
+        .nickname-box {
+            background-color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        .user {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding-top: 60px;
+        }
+
+        .menu-button {
+            width: 90%;
+            height: 100px;
+            margin: 15px 0;
+            font-size: 1.4rem;
+            border-radius: 16px;
+            font-weight: 500;
+            background-color: #f0f0f0;
+            color: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+        }
+
+        .menu-button:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+    <script type="text/javascript" src="/js/jquery-3.6.0.min.js"></script>
+
+    <script type="text/javascript">
+        // HTML로딩이 완료되고, 실행됨
+        $(document).ready(function () {
+            const userId = sessionStorage.getItem('userId');
+
+            // 사용자 정보를 화면에 표시하고, sessionStorage에 저장하는 함수
+            function updateUserInfo(user) {
+                if (user && user.userId) {
+                    // 사용자 아이디 표시
+                    $("#nicknameBox").text(user.userId + " 님 환영합니다.");
+
+                    // sessionStorage에도 저장 (다른 페이지에서 사용하기 위해)
+                    sessionStorage.setItem('userId', user.userId);
+                    sessionStorage.setItem('regDt', user.regDt);
+                    sessionStorage.setItem('adminYn', user.adminYn);
+                } else {
+                    $("#nicknameBox").text("로그인 정보 없음");
+                }
+            }
+
+            if (userId) {
+                // sessionStorage에 userId가 있으면 바로 사용
+                updateUserInfo({ userId: userId });
+            } else {
+                // sessionStorage에 userId가 없으면 서버에 요청 (OAuth 로그인 시 이 경로를 따름)
+                $.ajax({
+                    url: "/user/info",
+                    type: "get",
+                    dataType: "JSON",
+                    success: function (response) {
+                        if (response.data) {
+                            updateUserInfo(response.data);
+                        }
+                    },
+                    error: function () {
+                        console.log("사용자 정보 로딩에 실패했습니다.");
+                        $("#nicknameBox").text("로그인 필요");
+                    }
+                });
+            }
+
+            // 내정보
+            $("#myaccount").on("click", function () {
+                location.href = "/main/myaccount";
+            });
+
+            // 배송조회
+            $("#delivery").on("click", function () {
+                location.href = "/main/post/deliverytracking";
+            });
+
+            // 저장된 배송조회
+            $("#postList").on("click", function () {
+                location.href = "/main/post/postList";
+            });
+
+            // 공지사항
+            $("#announcement").on("click", function () {
+                location.href = "/main/notice/noticeList";
+            });
+
+            // 공지사항
+            $("#boost").on("click", function () {
+                location.href = "/main/boost/payment";
+            });
+        });
+    </script>
+</head>
+<body class="bg-gradient-primary">
+
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <div class="nickname-box" id="nicknameBox"></div>
+
+        <div class="user">
+            <button id="myaccount" class="menu-button">내정보</button>
+            <button id="delivery" class="menu-button">배송조회</button>
+            <button id="postList" class="menu-button">내 저장된 배송조회</button>
+            <button id="announcement" class="menu-button">공지사항</button>
+            <button id="boost" class="menu-button">기부하기</button>
+        </div>
+    </div>
+</div>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

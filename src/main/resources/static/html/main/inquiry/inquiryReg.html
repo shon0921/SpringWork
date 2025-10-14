@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>문의 글쓰기</title>
+
+	<link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+	<link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+	<link href="/css/sb-admin-2.min.css" rel="stylesheet">
+
+	<style>
+		body {
+			background-color: #b2ebf2;
+		}
+
+		.custom-card {
+			max-width: 500px;
+			margin: auto;
+			background-color: white;
+			border-radius: 12px;
+			padding: 40px 20px;
+			box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			display: flex;
+			flex-direction: column;
+		}
+
+		h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			margin-bottom: 10px; /* 기존 30px에서 줄임 */
+			text-align: center;
+			color: #000;
+		}
+
+		label {
+			font-weight: bold;
+			margin-top: 15px;
+		}
+
+		input[type="text"],
+		textarea,
+		input[type="file"] {
+			width: 100%;
+			padding: 12px;
+			border: 1px solid #ccc;
+			border-radius: 8px;
+			font-size: 1rem;
+			margin-top: 5px;
+		}
+
+		textarea {
+			resize: none;
+		}
+
+		.button-group {
+			display: flex;
+			justify-content: space-between;
+			margin-top: 30px;
+		}
+
+		/* 기존 스타일에서 배경색 제거 */
+		.form-button {
+			width: 48%;
+			padding: 12px;
+			font-size: 1.1rem;
+			border-radius: 8px;
+			border: 1px solid #ccc;
+			cursor: pointer;
+			transition: background-color 0.2s ease;
+			color: #fff;
+		}
+
+		#btnSend {
+			background-color: #007bff;
+			border-color: #007bff;
+		}
+
+		#btnSend:hover {
+			background-color: #0056b3;
+			border-color: #0056b3;
+		}
+
+		#btnReset {
+			background-color: #6c757d;
+			border-color: #6c757d;
+		}
+
+		#btnReset:hover {
+			background-color: #5a6268;
+			border-color: #5a6268;
+		}
+
+		.form-button:hover {
+			background-color: #f1f1f1;
+		}
+
+		#backButton {
+			position: absolute;
+			top: 20px;
+			left: 20px;
+			z-index: 10;
+			background: none;
+			border: none;
+			padding: 0;
+			cursor: pointer;
+			font-size: 1.5rem;
+			color: #858796;
+		}
+
+		#backButton:hover {
+			color: #5a5c69;
+		}
+	</style>
+
+	<script src="/js/jquery-3.6.0.min.js"></script>
+
+	<script>
+		$(document).ready(function () {
+			$("#backButton").on("click", function () {
+				location.href = "/main/inquiry/inquiryList";
+			});
+
+			$("#btnSend").on("click", function () {
+				doSubmit();
+			});
+
+			$("#btnReset").on("click", function () {
+				$("#inquiryForm")[0].reset();
+			});
+		});
+
+		function doSubmit() {
+			const f = document.getElementById("inquiryForm");
+
+			if (f.title.value === "") {
+				alert("제목을 입력해주세요.");
+				f.title.focus();
+				return;
+			}
+
+			if (f.contents.value === "") {
+				alert("내용을 입력해주세요.");
+				f.contents.focus();
+				return;
+			}
+
+			const formData = new FormData();
+
+			const pDTO = {
+				title: $("#title").val(),
+				contents: $("#contents").val(),
+				noticeYn: "Y",
+				readCnt: 0
+			};
+
+			formData.append('pDTO', new Blob([JSON.stringify(pDTO)], {type: "application/json"}));
+
+			const fileInput = $('#file')[0];
+			if (fileInput.files.length > 0) {
+				formData.append('file', fileInput.files[0]);
+			}
+
+			$.ajax({
+				url: "/inquiry/inquiryInsert",
+				type: "POST",
+				processData: false,
+				contentType: false,
+				data: formData,
+				success: function (json) {
+					alert(json.data?.msg || "등록 성공");
+					location.href = "/main/inquiry/inquiryList";
+				},
+				error: function (xhr) {
+					const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "등록 실패";
+					alert(errorMsg);
+				}
+			});
+		}
+	</script>
+</head>
+
+<body>
+
+<div class="container">
+	<div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+		<button type="button" id="backButton">
+			<i class="fas fa-chevron-left"></i>
+		</button>
+		<h1>문의 글쓰기</h1>
+		<form id="inquiryForm" enctype="multipart/form-data">
+			<label for="title">제목</label>
+			<input type="text" id="title" name="title" maxlength="100">
+
+			<label for="contents">내용</label>
+			<textarea id="contents" name="contents" rows="10"></textarea>
+
+			<label for="file">이미지</label>
+			<input type="file" id="file" name="file" accept="image/*">
+
+			<div class="button-group">
+				<button type="button" id="btnSend" class="form-button">글쓰기</button>
+				<button type="button" id="btnReset" class="form-button">다시쓰기</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/fontawesome-free/js/all.min.js"></script>
+
+</body>
+</html>

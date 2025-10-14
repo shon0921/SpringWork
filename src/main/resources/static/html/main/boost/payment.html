@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>가상 결제 (포트원)</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.iamport.kr/js/iamport.payment-1.2.0.js"></script>
+  <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+  <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+  <style>
+    .custom-card {
+      width: 100%;
+      max-width: 500px;
+      height: 640px;
+      margin: auto;
+      position: relative;
+      padding-top: 20px;
+      box-sizing: border-box;
+    }
+
+    #backButton {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: #858796;
+    }
+
+    #backButton:hover {
+      color: #5a5c69;
+    }
+
+    .payment-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 2rem;
+    }
+
+    .payment-button {
+      width: 120%;
+      height: 60px;
+      margin: 10px 0;
+      font-size: 1.2rem;
+      border-radius: 10rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-top: 2rem; /* 위쪽 여백 추가 */
+      margin-bottom: 2rem;
+      color: #3a3b45;
+      text-align: center;
+    }
+
+  </style>
+</head>
+<body class="bg-gradient-primary">
+
+<div class="container">
+  <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+    <button type="button" id="backButton">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <h1>기부하기</h1>
+    <div class="card-body p-0">
+      <div class="p-5">
+        <div class="payment-buttons">
+          <button onclick="requestPay(100)" class="btn btn-primary btn-block payment-button">100원 결제</button>
+          <button onclick="requestPay(1000)" class="btn btn-primary btn-block payment-button">1000원 결제</button>
+          <button onclick="requestPay(10000)" class="btn btn-info btn-block payment-button">10000원 결제</button>
+          <button onclick="requestPay(50000)" class="btn btn-info btn-block payment-button">50000원 결제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 뒤로가기 버튼 클릭 이벤트
+  $("#backButton").on("click", function () {
+    history.back();
+  });
+
+  var buyerName = ""; // 사용자 ID
+  var userTel = "";   // 사용자 전화번호
+
+  // 1. 서버에서 로그인 사용자 정보 가져오기
+  $.ajax({
+    url: "/portone/paymentInfo", // 컨트롤러에서 JSON으로 사용자 정보 반환
+    type: "GET",
+    dataType: "json"
+  }).done(function(data) {
+    buyerName = data.userId;
+    userTel = data.phone;
+    console.log("사용자 정보 가져옴:", buyerName, userTel);
+  }).fail(function(err){
+    alert("사용자 정보를 가져오지 못했습니다. 로그인 후 시도해주세요.");
+    console.error(err);
+  });
+
+  // 2. 포트원 초기화
+  var IMP = window.IMP;
+  IMP.init("imp60446843");
+
+  function requestPay(amount) {
+    if (!buyerName || !userTel) {
+      alert("사용자 정보를 아직 불러오지 못했습니다.");
+      return;
+    }
+
+    IMP.request_pay({
+      pg: "html5_inicis",
+      pay_method: "card",
+      merchant_uid: "order_" + new Date().getTime(),
+      name: "가상 결제 테스트",
+      amount: amount,
+      buyer_name: buyerName,
+      buyer_tel: userTel
+    }, function (rsp) {
+      if (rsp.success) {
+        console.log("결제 성공:", rsp);
+
+        // 서버 검증
+        $.ajax({
+          url: "/portone/verify/" + rsp.imp_uid,
+          type: "POST"
+        }).done(function (data) {
+          console.log("서버 검증 응답:", data);
+          const serverAmount = data.response.amount;
+          if (rsp.paid_amount === serverAmount) {
+            alert("결제가 성공적으로 완료되었습니다.");
+          } else {
+            alert("결제 검증에 실패했습니다. 금액이 일치하지 않습니다.");
+          }
+        });
+      } else {
+        alert("결제에 실패하였습니다. 에러: " + rsp.error_msg);
+      }
+    });
+  }
+</script>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+
+    <title>회원가입</title>
+
+    <!-- SB Admin 2 Fonts & Styles -->
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link
+            href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+            rel="stylesheet" />
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet" />
+
+    <style>
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #858796;
+        }
+
+        #backButton:hover {
+            color: #5a5c69;
+        }
+
+        .custom-card {
+            width: 100%;
+            max-width: 500px;
+            height: 640px;
+            margin: auto;
+        }
+
+        .custom-card .p-5 {
+            padding: 2rem !important; /* 로그인과 동일하게 여백 줄이기 */
+        }
+
+        .user button {
+            margin-top: 50px;
+            padding: 14px 0;
+            font-size: 1.2rem;
+            height: 60px;
+        }
+
+        .user button:first-of-type {
+            margin-top: 30px;
+        }
+
+        .user button:last-of-type {
+            margin-top: 30px;
+        }
+    </style>
+
+    <!-- jQuery + Plugin -->
+    <script type="text/javascript" src="/js/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="/js/jquery.serializeObject.min.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $("#backButton").on("click", function () {
+                location.href = "/";
+            });
+
+            $("#btnSend").on("click", function () {
+                $.ajax({
+                    url: "/user/register1",
+                    type: "post",
+                    contentType: "application/json",
+                    dataType: "JSON",
+                    data: JSON.stringify($("#registerForm").serializeObject())
+                }).then(
+                    function (json) {
+                        alert(json.data.msg);
+                        sessionStorage.setItem('authNumber', json.data.authNumber);
+                        if (json.data.result === 0 && json.data.authNumber !== -1) {
+                            location.href = "/register2";
+                        }
+                    },
+                    function (json) {
+                        const result = json.responseJSON.data;
+                        let errMsg = "";
+                        for (const data of result) {
+                            errMsg += (data.defaultMessage + "\n")
+                        }
+                        alert(errMsg);
+                    });
+            });
+        });
+    </script>
+</head>
+
+<body class="bg-gradient-primary">
+<div class="container">
+    <div class="card o-hidden border-0 shadow-lg my-5 custom-card">
+        <button type="button" id="backButton">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="card-body p-0">
+            <div class="p-5">
+                <div class="text-center">
+                    <h1 class="h4 text-gray-900 mb-4">회원가입</h1>
+                </div>
+                <form class="user" id="registerForm">
+                    <div class="form-group">
+                        <label for="userId">아이디</label>
+                        <input type="text" class="form-control form-control-user" id="userId" name="userId" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">비밀번호</label>
+                        <input type="password" class="form-control form-control-user" id="password" name="password" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="password2">비밀번호 확인</label>
+                        <input type="password" class="form-control form-control-user" id="password2" name="password2" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="phoneNumber">휴대폰 번호</label>
+                        <input type="text" class="form-control form-control-user" id="phoneNumber" name="phoneNumber" maxlength="100">
+                    </div>
+                    <button type="button" id="btnSend" class="btn btn-primary btn-user btn-block">
+                        휴대폰 인증
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript -->
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+</body>
+
+</html>
