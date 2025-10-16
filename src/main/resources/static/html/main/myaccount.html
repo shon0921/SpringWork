@@ -135,6 +135,11 @@
         location.href = "/main/title";
       });
 
+      // 기부하기
+      $("#boost").on("click", function () {
+        location.href = "/main/boost/payment";
+      });
+
       // --- 이제 userInfo 변수에 정상적으로 접근할 수 있습니다 ---
       $("#changepassword").on("click", function () {
         // userInfo 변수가 할당될 때까지 잠시 기다려줍니다. (안전장치)
@@ -226,6 +231,7 @@
 
       <button id="changepassword" type="button" class="menu-button">비밀번호 변경</button>
       <button id="inquiry" type="button" class="menu-button">문의하기</button>
+      <button id="boost" class="menu-button">기부하기</button>
       <button id="logout" type="button" class="menu-button">로그아웃</button>
       <button id="delete" type="button" class="menu-button red">회원탈퇴</button>
     </div>

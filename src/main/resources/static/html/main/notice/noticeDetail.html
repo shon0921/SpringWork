@@ -55,6 +55,7 @@
                 success: function(response) {
                     if (response.message === 'SUCCESS') {
                         noticeData = response.data.notice;
+                        const adminYn = response.data.adminYn; // ★★★ 핵심 수정: sessionStorage 대신 API 응답에서 adminYn 값을 가져옵니다.
 
                         $('#title').text(noticeData.title);
                         $('#regDt').text(noticeData.regDt);
@@ -66,7 +67,7 @@
                             $('#chgDtRow').show();
                         }
 
-                        const adminYn = sessionStorage.getItem("adminYn");
+                        // 가져온 adminYn 값을 사용하여 버튼 표시 여부 결정
                         if (adminYn === 'Y') {
                             $('#btnEdit, #btnDelete').show();
                         } else {

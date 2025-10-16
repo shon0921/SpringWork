@@ -48,7 +48,7 @@ public class TrackingController {
         String ambiguousTerm = request.get("ambiguousTerm");
         String prompt = String.format(
                 "당신은 한국의 택배 시스템과 지리에 매우 능숙한 주소 변환 전문가입니다. " +
-                        "사용자가 입력한 모호한 배송 위치 키워드를 카카오맵 API에서 검색하기 가장 좋은, 명확하고 구체적인 장소 이름으로 변환해주세요. " +
+                        "사용자가 입력한 모호한 배송 위치 키워드를 네이버지도 API에서 검색하기 가장 좋은, 명확하고 구체적인 장소 이름으로 변환해주세요. " +
                         "다른 설명은 일체 하지 말고, 변환된 최종 장소 이름만 답변해야 합니다. " +
                         "예시: 입력: 경기 김포 cj, 출력: CJ대한통운 김포 대리점 / 입력: 김포우체국, 출력: 김포우체국 / 입력: %s, 출력:",
                 ambiguousTerm

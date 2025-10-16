@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -42,15 +41,22 @@ public class NoticeController {
      */
     @GetMapping(value = "noticeList")
     @ResponseBody
-    public ResponseEntity<?> noticeList() throws Exception {
+    public ResponseEntity<?> noticeList(HttpSession session) throws Exception {
         log.info("{}.noticeList Start!", this.getClass().getName());
 
         List<NoticeDTO> rList = Optional.ofNullable(noticeService.getNoticeList())
                 .orElseGet(ArrayList::new);
 
+        String adminYn = CmmUtil.nvl((String) session.getAttribute("adminYn"));
+
+        Map<String, Object> resData = new HashMap<>();
+        resData.put("noticeList", rList);
+        resData.put("adminYn", adminYn);
+
+
         log.info("{}.noticeList End!", this.getClass().getName());
 
-        return ResponseEntity.ok(CommonResponse.of(HttpStatus.OK, "SUCCESS", rList));
+        return ResponseEntity.ok(CommonResponse.of(HttpStatus.OK, "SUCCESS", resData));
     }
 
     /**
@@ -65,6 +71,15 @@ public class NoticeController {
         MsgDTO dto;
 
         try {
+            String adminYn = CmmUtil.nvl((String) session.getAttribute("adminYn"));
+
+            if (!"Y".equals(adminYn)) {
+                msg = "관리자만 등록할 수 있습니다.";
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(CommonResponse.of(HttpStatus.FORBIDDEN, msg, null));
+            }
+
+
             String userId = CmmUtil.nvl((String) session.getAttribute("userId"));
             if (userId.isEmpty()) {
                 msg = "로그인이 필요합니다.";
@@ -123,10 +138,12 @@ public class NoticeController {
                 .orElseGet(NoticeDTO::new);
 
         String sessionUserId = CmmUtil.nvl((String) session.getAttribute("userId"));
+        String adminYn = CmmUtil.nvl((String) session.getAttribute("adminYn")); // 세션에서 adminYn 가져오기
 
         Map<String, Object> resData = new HashMap<>();
         resData.put("notice", rDTO);
         resData.put("sessionUserId", sessionUserId);
+        resData.put("adminYn", adminYn); // adminYn 추가
 
         log.info("{}.noticeInfo End!", this.getClass().getName());
 
@@ -169,6 +186,15 @@ public class NoticeController {
         MsgDTO dto;
 
         try {
+
+            String adminYn = CmmUtil.nvl((String) session.getAttribute("adminYn"));
+
+            if (!"Y".equals(adminYn)) {
+                msg = "관리자만 수정할 수 있습니다.";
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(CommonResponse.of(HttpStatus.FORBIDDEN, msg, null));
+            }
+
             String userId = CmmUtil.nvl((String) session.getAttribute("userId")); // 세션 키 'userId'로 통일
             String nSeq = CmmUtil.nvl(request.getParameter("nSeq"));
             String title = CmmUtil.nvl(request.getParameter("title"));
@@ -208,7 +234,7 @@ public class NoticeController {
      */
     @ResponseBody
     @PostMapping(value = "noticeDelete")
-    public ResponseEntity<?> noticeDelete(HttpServletRequest request) {
+    public ResponseEntity<?> noticeDelete(HttpServletRequest request, HttpSession session) {
 
         log.info("{}.noticeDelete Start!", this.getClass().getName());
 
@@ -216,6 +242,15 @@ public class NoticeController {
         MsgDTO dto;
 
         try {
+
+            String adminYn = CmmUtil.nvl((String) session.getAttribute("adminYn"));
+
+            if (!"Y".equals(adminYn)) {
+                msg = "관리자만 삭제할 수 있습니다.";
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(CommonResponse.of(HttpStatus.FORBIDDEN, msg, null));
+            }
+
             String nSeq = CmmUtil.nvl(request.getParameter("nSeq"));
             log.info("nSeq : {}", nSeq);
 

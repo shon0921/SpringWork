@@ -122,9 +122,24 @@
                         $('#regDt').text(noticeData.regDt);
                         $('#contents').html(noticeData.contents.replace(/\n/g, '<br/>'));
 
+                        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 이 부분 수정 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
                         if (noticeData.imageUrl) {
-                            $('#imageContainer').html(`<img src="${noticeData.imageUrl}" style="max-width: 100%; height: auto;" />`);
+                            const $imageContainer = $('#imageContainer');
+                            const $imageRow = $imageContainer.closest('tr');
+
+                            // 1. '이미지' 라벨(th)을 숨깁니다.
+                            $imageRow.find('th').hide();
+
+                            // 2. 이미지 칸(td)이 테이블 전체 너비를 차지하도록 하고, 불필요한 여백을 제거합니다.
+                            $imageContainer.attr('colspan', '2').css('padding', '0');
+
+                            // 3. 이미지를 가로 100%로 채워서 보여줍니다.
+                            $imageContainer.html(`<img src="${noticeData.imageUrl}" style="width: 100%; height: auto; display: block;" />`);
+                        } else {
+                            // 이미지가 없으면 이미지 행 전체를 숨깁니다.
+                            $('#imageRow').hide();
                         }
+                        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
                         if (noticeData.chgDt) {
                             $('#chgDt').text(noticeData.chgDt);
@@ -323,7 +338,7 @@
                     <th>내용</th>
                     <td id="contents"></td>
                 </tr>
-                <tr>
+                <tr id="imageRow">
                     <th>이미지</th>
                     <td id="imageContainer"></td>
                 </tr>

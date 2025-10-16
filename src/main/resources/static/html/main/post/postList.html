@@ -90,7 +90,11 @@
 
         .favorite-btn { right: 60px; color: #858796; }
         .favorite-btn i.active { color: gold; }
-        .favorite-btn:hover i { color: gold; }
+        @media (hover: hover) {
+            .favorite-btn:hover i {
+                color: gold;
+            }
+        }
 
         #backButton {
             position: absolute;
@@ -250,15 +254,27 @@
             }
         });
 
-        // 즐겨찾기 버튼
         $("#savedListContainer").on("click", ".favorite-btn", function(e){
             e.stopPropagation();
             const $btn = $(this);
+
+            // =======================================================
+            // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 이 부분 수정 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+            // =======================================================
+            $btn.blur(); // 클릭 후 버튼의 포커스를 즉시 해제하여 hover 문제를 해결합니다.
+            // =======================================================
+            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+            // =======================================================
+
+            const $icon = $btn.find("i");
             const index = $btn.closest('.tracking-item').data('index');
             const trackingList = $("#savedListContainer").data('tracking-list');
             const item = trackingList[index];
 
             const newFav = (item.favorites === "Y") ? "N" : "Y";
+
+            $icon.toggleClass("active", newFav === "Y");
+            item.favorites = newFav;
 
             $.ajax({
                 type: "POST",
@@ -269,31 +285,17 @@
                     trackingNumber: item.trackingNumber,
                     favorites: newFav
                 }),
-                beforeSend: function() {
-                    console.log("=== 즐겨찾기 Ajax 시작 ===");
-                    console.log("전송할 DTO 값:", {
-                        toAddress: item.toAddress,
-                        trackingNumber: item.trackingNumber,
-                        favorites: newFav
-                    });
-                    console.log("현재 item.favorites 상태:", item.favorites);
-                },
                 success: function(res){
-                    console.log("서버 응답:", res);
-
-                    if(res.message === "SUCCESS"){
-                        item.favorites = newFav;
-                        $btn.find("i").toggleClass("active", newFav === "Y");
-                        console.log("토글 완료, 현재 item.Favorites 상태:", item.favorites);
-                    } else {
+                    if (res.message !== "SUCCESS") {
                         alert("즐겨찾기 변경 실패: " + (res.message || '알 수 없는 오류'));
+                        item.favorites = (newFav === "Y" ? "N" : "Y");
+                        $icon.toggleClass("active", item.favorites === "Y");
                     }
                 },
-                error: function(xhr, status, error){
-                    console.error("즐겨찾기 변경 요청 중 오류 발생:", status, error);
-                },
-                complete: function() {
-                    console.log("=== 즐겨찾기 Ajax 종료 ===");
+                error: function(){
+                    alert("즐겨찾기 변경 중 오류가 발생했습니다.");
+                    item.favorites = (newFav === "Y" ? "N" : "Y");
+                    $icon.toggleClass("active", item.favorites === "Y");
                 }
             });
         });
@@ -301,5 +303,3 @@
 </script>
 </body>
 </html>
-
-

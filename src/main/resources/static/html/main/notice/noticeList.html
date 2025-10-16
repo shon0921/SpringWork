@@ -64,7 +64,6 @@
             font-size: 0.85rem;
             color: #858796;
             display: flex;
-            /* [핵심 수정 1] 날짜만 오른쪽으로 정렬하기 위해 flex-end 사용 */
             justify-content: flex-end;
             align-items: center;
         }
@@ -80,6 +79,7 @@
             border: 1px solid #4e73df;
             cursor: pointer;
             transition: background-color 0.2s ease;
+            display: none; /* 관리자일 때만 보이도록 기본 숨김 */
         }
 
         .write-button:hover {
@@ -116,13 +116,18 @@
                 type: 'GET',
                 success: function(response) {
                     if (response.message === 'SUCCESS') {
-                        const rList = response.data;
+                        const rList = response.data.noticeList;
+                        const adminYn = response.data.adminYn;
                         let html = '';
+
+                        // 관리자 'Y'일 경우 글쓰기 버튼 표시
+                        if (adminYn === 'Y') {
+                            $(".write-button").show();
+                        }
 
                         rList.forEach(function(dto) {
                             const displayTime = dto.chgDt || dto.regDt;
 
-                            // [핵심 수정 2] HTML 구조에서 작성자(<span class="writer-id">) 부분만 제거
                             html += `
                                 <button class="notice-button" onclick="doDetail('${dto.noticeSeq}')">
                                     <span class="notice-title">${dto.title}</span>
@@ -137,7 +142,7 @@
                     }
                 },
                 error: function() {
-                    alert("에러가 발생했습니다.");
+                    alert("공지사항 목록을 불러오는 데 실패했습니다.");
                 }
             });
         }
@@ -148,12 +153,6 @@
             });
 
             loadNoticeList();
-
-            const adminYn = sessionStorage.getItem("adminYn");
-
-            if (adminYn !== "Y") {
-                $(".write-button").hide();
-            }
         });
     </script>
 </head>
