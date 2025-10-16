@@ -72,6 +72,11 @@ public class UserMapper extends AbstractMongoDBComon implements IUserMapper {
                 updateFields.append("phoneNumber", pDTO.getPhoneNumber()); // 전화번호 갱신
             }
 
+            // ✨ 수정된 부분: totalAmount가 null일 경우 0으로 초기화
+            if (userDoc.get("totalAmount") == null) {
+                updateFields.append("totalAmount", BigDecimal.ZERO);
+            }
+
             Document updateQuery = new Document("$set", updateFields);
             col.updateOne(findQuery, updateQuery);
             log.info("Social user data updated successfully.");

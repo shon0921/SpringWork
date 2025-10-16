@@ -6,7 +6,7 @@ import kopo.poly.controller.response.CommonResponse;
 import kopo.poly.dto.MsgDTO;
 import kopo.poly.dto.NoticeDTO;
 import kopo.poly.service.IInquiryService;
-import kopo.poly.service.S3Uploader;
+import kopo.poly.service.impl.S3Uploader;
 import kopo.poly.util.CmmUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

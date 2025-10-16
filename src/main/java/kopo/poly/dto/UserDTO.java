@@ -32,6 +32,7 @@ public class UserDTO implements Serializable {
 
         private String adminYn; // 관리자여부    기본값 n, Y이면 관리자
 
+        @Builder.Default
         private BigDecimal totalAmount = BigDecimal.ZERO; // 누적 결제 금액 필드 추가
 
         // --- 🚨 1. 여기에 provider 필드를 추가합니다. ---
