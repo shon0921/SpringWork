@@ -51,9 +51,5 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addViewController("/main/boost/payment").setViewName("forward:/html/main/boost/payment.html");
 
-
-
-
-
     }
 }
