@@ -96,6 +96,40 @@
   var buyerName = ""; // 사용자 ID
   var userTel = "";   // 사용자 전화번호
 
+  // --- START: 수정된 코드 ---
+  // 페이지 로드 시 URL 파라미터를 확인하여 모바일 결제 후 리디렉션 처리
+  $(function(){
+    var url = new URL(window.location.href);
+    var imp_uid = url.searchParams.get("imp_uid");
+    var merchant_uid = url.searchParams.get("merchant_uid");
+    var imp_success = url.searchParams.get("imp_success");
+
+    if (imp_success === 'true') {
+      // 결제 성공 시 서버 검증 요청
+      $.ajax({
+        url: "/portone/verify/" + imp_uid,
+        type: "POST"
+      }).done(function (data) {
+        // 서버 검증 응답에 따라 처리
+        // 'data.response'가 있고 'status'가 'paid'인지 확인
+        if (data.response && data.response.status === 'paid') {
+          alert("결제가 성공적으로 완료되었습니다.");
+        } else {
+          alert("결제 검증에 실패했습니다. 관리자에게 문의하세요.");
+        }
+      }).fail(function () {
+        alert("서버 검증 중 오류가 발생했습니다.");
+      }).always(function () {
+        // 성공이든 실패든 메인 페이지로 이동
+        location.href = "/main/title";
+      });
+    } else if (imp_success === 'false') {
+      var error_msg = url.searchParams.get("error_msg");
+      alert("결제에 실패하였습니다. 에러: " + error_msg);
+    }
+  });
+  // --- END: 수정된 코드 ---
+
   // 1. 서버에서 로그인 사용자 정보 가져오기
   $.ajax({
     url: "/portone/paymentInfo", // 컨트롤러에서 JSON으로 사용자 정보 반환
@@ -127,22 +161,32 @@
       name: "가상 결제 테스트",
       amount: amount,
       buyer_name: buyerName,
-      buyer_tel: userTel
+      buyer_tel: userTel,
+      // --- START: 수정된 부분 ---
+      // 모바일 결제 시, 결제가 끝나고 돌아올 URL을 지정합니다.
+      m_redirect_url: window.location.origin + window.location.pathname
+      // --- END: 수정된 부분 ---
     }, function (rsp) {
       if (rsp.success) {
         console.log("결제 성공:", rsp);
 
+        // PC 환경에서는 callback 함수가 바로 실행됩니다.
         // 서버 검증
         $.ajax({
           url: "/portone/verify/" + rsp.imp_uid,
           type: "POST"
         }).done(function (data) {
           console.log("서버 검증 응답:", data);
-          const serverAmount = data.response.amount;
-          if (rsp.paid_amount === serverAmount) {
-            alert("결제가 성공적으로 완료되었습니다.");
+          // 서버에서 받은 결제 금액
+          if (data.response && data.response.amount) {
+            const serverAmount = data.response.amount;
+            if (rsp.paid_amount === serverAmount) {
+              alert("결제가 성공적으로 완료되었습니다.");
+            } else {
+              alert("결제 검증에 실패했습니다. 금액이 일치하지 않습니다.");
+            }
           } else {
-            alert("결제 검증에 실패했습니다. 금액이 일치하지 않습니다.");
+            alert("결제가 접수되었으나, 서버 검증에 실패했습니다.");
           }
         });
       } else {

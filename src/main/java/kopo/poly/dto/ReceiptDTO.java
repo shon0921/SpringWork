@@ -11,4 +11,5 @@ public class ReceiptDTO {
     private String userId;  // 닉네임
     private String Money;   // 결제금액
     private String Date;    // 날짜
+    private String cardName; // 카드사 이름
 }

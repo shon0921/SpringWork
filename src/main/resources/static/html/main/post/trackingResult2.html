@@ -90,38 +90,26 @@
     async function getRefinedSearchTerm(ambiguousTerm) {
         console.log(`[1단계: 서버 호출] 모호한 검색어 '${ambiguousTerm}' 정제를 요청합니다.`);
         try {
-            // 서버의 '/tracking/get-refined-address' 엔드포인트로 POST 요청
             const response = await fetch('/tracking/get-refined-address', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ ambiguousTerm: ambiguousTerm }) // 요청 본문에 데이터 전송
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ambiguousTerm: ambiguousTerm })
             });
-
             if (!response.ok) {
-                // 서버 응답이 실패인 경우 (4xx, 5xx 등)
                 throw new Error(`주소 정제 API 서버 오류: ${response.status}`);
             }
-
-            const data = await response.json(); // 응답을 JSON으로 파싱
-
+            const data = await response.json();
             if (data.error) {
-                // 서버에서 'error' 필드를 포함하여 응답한 경우
                 throw new Error(data.error);
             }
-
-            const refinedTerm = data.refinedAddress; // 'refinedAddress' 키의 값을 가져옴
+            const refinedTerm = data.refinedAddress;
             console.log(`[2단계: 서버 응답] 성공적으로 변환했습니다. 👉 '${refinedTerm}'`);
             return refinedTerm;
-
         } catch (error) {
             console.error("[서버 호출 실패]", error);
-            // API 호출에 실패하면 원래의 검색어를 그대로 반환하여 다음 로직이 동작하도록 함
             return ambiguousTerm;
         }
     }
-
 
     async function getDirection(start, end, map) {
         const KAKAO_REST_API_KEY = "e6363c30237aa9b08e811ac1c81fb9b4";
@@ -156,25 +144,62 @@
         infowindow.open(map, marker);
     }
 
+    // =================================================================
+    //  ✅ [최종 수정] 출발지 검색 로직
+    // =================================================================
     async function drawRouteWithGemini(startAddr, endAddr, map, geocoder, ps) {
-        // [수정] 함수 이름은 그대로 사용하지만, 내부적으로는 우리 서버를 호출합니다.
+        // 서버를 통해 주소를 정제합니다.
         const refinedAddr = await getRefinedSearchTerm(startAddr);
-        console.log(`[3단계: 카카오맵 호출] 정제된 검색어 '${refinedAddr}'로 장소 검색을 시작합니다.`);
-        refinedStartInfo.address = refinedAddr;
-        ps.keywordSearch(refinedAddr, (places, status) => {
-            if (status === kakao.maps.services.Status.OK && places.length > 0) {
-                const foundPlace = places[0];
-                const startCoords = new kakao.maps.LatLng(foundPlace.y, foundPlace.x);
-                refinedStartInfo.lat = foundPlace.y;
-                refinedStartInfo.lng = foundPlace.x;
-                const marker = new kakao.maps.Marker({ map, position: startCoords });
-                showSimpleInfoWindow(map, marker, "출발지");
-                searchEndAndDrawRoute(startCoords, endAddr, map, geocoder);
-            } else {
-                console.error(`출발지 위치 '${refinedAddr}'를 찾을 수 없습니다.`);
+        console.log(`[1순위 검색어] 서버 정제 주소: '${refinedAddr}'`);
+        console.log(`[2순위 검색어] 원본 주소: '${startAddr}'`);
+
+        // 검색을 시도할 검색어 목록을 만듭니다. (중복 제거)
+        const searchTerms = [...new Set([refinedAddr, startAddr])];
+        let attemptIndex = 0;
+
+        // 순차적으로 검색을 시도하는 내부 함수
+        function searchWithRetry() {
+            // 모든 검색 시도에 실패한 경우
+            if (attemptIndex >= searchTerms.length) {
+                console.error(`'${searchTerms.join(', ')}' 모두 검색 실패. 출발지를 찾을 수 없습니다.`);
+                // 출발지를 못 찾았어도 도착지는 지도에 표시합니다.
                 searchEndAndDrawRoute(null, endAddr, map, geocoder);
+                return;
             }
-        });
+
+            const currentTerm = searchTerms[attemptIndex];
+            console.log(`[${attemptIndex + 1}차 시도] '${currentTerm}'으로 장소 검색을 시작합니다.`);
+
+            // 카카오맵 키워드 검색 API 호출
+            ps.keywordSearch(currentTerm, (places, status) => {
+                // 검색 성공 시
+                if (status === kakao.maps.services.Status.OK && places.length > 0) {
+                    console.log(`✅ 검색 성공! 👉 '${places[0].place_name}'`);
+                    const foundPlace = places[0];
+                    const startCoords = new kakao.maps.LatLng(foundPlace.y, foundPlace.x);
+
+                    // 최종 성공한 위치 정보를 저장합니다.
+                    refinedStartInfo.address = foundPlace.place_name;
+                    refinedStartInfo.lat = foundPlace.y;
+                    refinedStartInfo.lng = foundPlace.x;
+
+                    const marker = new kakao.maps.Marker({ map, position: startCoords });
+                    showSimpleInfoWindow(map, marker, "출발지");
+
+                    // 출발지와 도착지 경로를 그립니다.
+                    searchEndAndDrawRoute(startCoords, endAddr, map, geocoder);
+
+                } else {
+                    // 검색 실패 시, 다음 검색어로 재시도
+                    console.warn(`'${currentTerm}' 검색 실패. 다음 검색어로 재시도합니다.`);
+                    attemptIndex++;
+                    searchWithRetry();
+                }
+            });
+        }
+
+        // 첫 번째 검색을 시작합니다.
+        searchWithRetry();
     }
 
     function searchEndAndDrawRoute(startCoords, endAddr, map, geocoder) {
@@ -289,8 +314,9 @@
                     }
                     if (startLocationName) {
                         const carrierName = carrierMap[latestTrackingData.carrier.id] || '';
-                        const searchTerm = `${startLocationName} ${carrierName}`;
-                        await drawRouteWithGemini(searchTerm, requestToAddress, map, geocoder, ps);
+                        // 원본 주소는 터미널 이름 + 택배사 이름 형태입니다.
+                        const originalSearchTerm = `${startLocationName} ${carrierName}`;
+                        await drawRouteWithGemini(originalSearchTerm, requestToAddress, map, geocoder, ps);
                     } else {
                         $("#map").html('<div class="map-loading">유효한 출발지 정보를 찾을 수 없습니다.</div>');
                     }

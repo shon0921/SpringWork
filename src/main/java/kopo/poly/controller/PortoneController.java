@@ -111,12 +111,15 @@ public class PortoneController {
 
                     if (rDTO != null && rDTO.getPhoneNumber() != null) {
                         BigDecimal paidAmount = paymentResponse.getResponse().getAmount();
+                        String currentDate = DateUtil.getDateTime("yyyy-MM-dd HH:mm:ss");
+                        String cardName = paymentResponse.getResponse().getCardName(); // 카드사 정보 가져오기
 
                         // 2. 영수증 정보 DTO 생성
                         ReceiptDTO receiptDTO = new ReceiptDTO();
                         receiptDTO.setUserId(userId);
                         receiptDTO.setMoney(paidAmount.toString());
-                        receiptDTO.setDate(DateUtil.getDateTime("yyyy-MM-dd HH:mm:ss"));
+                        receiptDTO.setDate(currentDate);
+                        receiptDTO.setCardName(cardName); // 카드사 정보 설정
 
                         // 3. 영수증 정보 DB에 저장하고, 'seq'가 포함된 DTO를 반환받음
                         ReceiptDTO savedReceipt = receiptService.insertReceipt(receiptDTO);
@@ -126,10 +129,13 @@ public class PortoneController {
                         userService.updateTotalAmount(userId, paidAmount);
                         log.info("누적 결제 금액 업데이트 성공");
 
-                        // --- 🚨 5. SMS 내용에 영수증 번호(getReceiptSeq)를 추가 ---
+                        // --- 🚨 5. SMS 내용에 카드사 정보를 추가 ---
                         String userPhoneNumber = rDTO.getPhoneNumber();
                         String msg = "[결제완료] 영수증 번호 : " + savedReceipt.getReceiptSeq() + "\n"
-                                + userId + "님 " + paidAmount + "원이 결제되었습니다.";
+                                + "결제수단 : " + cardName + "\n"
+                                + userId + "님 " + paidAmount + "원이 결제되었습니다.\n"
+                                + "결제일시: " + currentDate;
+
 
                         // --- 🚨 6. Builder 대신 new와 setter로 MailDTO 생성 ---
                         MailDTO mailDTO = new MailDTO();
