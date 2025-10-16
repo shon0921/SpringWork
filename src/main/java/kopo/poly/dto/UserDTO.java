@@ -28,7 +28,7 @@ public class UserDTO implements Serializable {
 
         private String regDt ;  // 회원가입일
 
-        private String chgDt;   // 회원가입일
+        private String chgDt;   // 회원 변경일
 
         private String adminYn; // 관리자여부    기본값 n, Y이면 관리자
 

@@ -25,7 +25,7 @@ public class SecurityConfig {
                                 "/", "/login", "/register", "/register2", "/forgotpassword",
                                 "/forgotpassword2", "/forgotpassword3", "/guestdeliverytracking",
                                 "/trackingResult", "/user/**", "/html/**", "/css/**",
-                                "/js/**", "/vendor/**", "/img/**"
+                                "/js/**", "/vendor/**", "/img/**", "/tracking/guest/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
